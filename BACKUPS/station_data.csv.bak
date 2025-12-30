@@ -1,0 +1,324 @@
+lat,lon,elev_m,rdps_elev_m,name,country,prov,upperair_obs,iata_code,wmo_id
+51.11,-115.33,1397,1826,Banff,ca,ab,,BAWO,71122
+50.55,-111.85,749,760,Brooks,ca,ab,,CWBO,
+51.06,-114.01,1081,1076,Calgary,ca,ab,,CYYC,
+53.19,-113.35,715,754,Edmonton/Stoney Plain UA,ca,ab,y,CYEG,71119
+58.46,-111.07,232,210,Fort_Chipewyan,ca,ab,,CYPY,
+56.65,-111.217,367,340,Fort_McMurray,ca,ab,,CYMM,71932
+55.183,-118.883,665,668,Grande_Prairie_Arpt,ca,ab,,CYQU,71940
+58.617,-117.167,336,348,High_Level_Arpt,ca,ab,,CYOJ,73085
+52.55,-118.1,1020,1994,Jasper_Ward_Office,ca,ab,,JAWO,
+52.933,-118.033,1020,1526,Jasper_Warden,ca,ab,,CWJW,
+50.5197,-115.2057,,2294,Joffre,ca,ab,,Joffre,
+54.767,-112.017,567,560,Lac_La_Biche,ca,ab,,CWLB,
+54.633,-120.5761,905,1314,Red_Deer,ca,ab,,CFRD,
+56.55,-115.283,,536,Red_Earth,ca,ab,,CWRD,
+52.417,-114.917,990,984,Rocky_Mountain_House,ca,ab,,CWRM,
+53.55,-114.1,744,736,Stony-Plain,ca,ab,y,CWSE,71119
+52.833,-111.1,,672,Wainwright_Airfield,ca,ab,,CZWN,
+49.7,-113.48,1296,956,Waterton_Gate,ca,ab,,WATG,
+54.15,-115.783,785,746,Whitecourt_Arpt,ca,ab,,CYZU,
+55.04,-131.57,30,52,Annette_Island,ca,ak,y,PANT,70398
+51.642,-121.297,,1004,100 Mile House,ca,bc,,CAV3,
+49.02,-122.37,58,28,Abbotsford,ca,bc,,YXX,
+52.0646,-123.2645,,878,Alexis_Creek,ca,bc,,CFAC,
+49.1156,-120.8674,,1646,Allison_Pass,ca,bc,,CHAS,
+52.4567,-125.3033,,1172,Anahim_Lake,ca,bc,,CFAN,
+49.4,-119.9,,1780,Apex_Mountain_Resort,ca,bc,,CHAX,
+59.5667,-133.7,716,834,Atlin,ca,bc,,CFAT,
+51.1167,-120.1167,,818,Barriere,ca,bc,,CHBA,
+52.373,-126.763,35,708,Bella Coola,ca,bc,,CYBD,
+52.11,-128.09,43,54,Bella_Bella,ca,bc,,CBBC,
+52.07,-119.17,683,1338,Blue_River,ca,bc,,CYCP,
+56.9667,-130.25,,808,Bob_Quinn,ca,bc,,CFBQ,
+49.8666,-121.4164,,978,Boston_Bar,ca,bc,,CHBB,
+54.229,-125.763,713,960,Burns Lake,ca,bc,,CWPZ,71952
+50.6,-124.9,,590,Bute_Inlet,ca,bc,,CBUT,
+50.1442,-123.1092,,1084,Callaghan_Valley,ca,bc,,VOD,
+51.1167,-117.8667,,1488,Canyon_Hot_Springs,ca,bc,,CHAB,
+51.5183,-118.462,,1280,Caribou_Ridge,ca,bc,,CHCA,
+59.8167,-130.0167,,1168,Cassiar_Mountains,ca,bc,,CHMD,
+49.05,-123.8667,,204,Cassidy,ca,bc,,YCD,
+49.17,-117.37,495,1168,Castlegar,ca,bc,,CYCG,
+52.1845,-127.4722,32,304,Cathedral_Point,ca,bc,,CWME,
+55.697,-121.633,609,772,Chetwynd,ca,bc,,CYCQ,
+58.9244,-129.93,,1250,Chickens_Neck_Mountain,ca,bc,,Chicken_Mtn,
+53.4938,-123.6088,,850,Chilako,ca,bc,,CFCK,
+49.158,-121.951,,102,Chilliwack,ca,bc,,CYCW,
+51.65,-120.033,,880,Clearwater,ca,bc,,CA0093,
+51.0914,-121.5867,1057,1124,Clinton,ca,bc,,CWCL,71717
+49.1642,-123.9364,18,126,Cntrl_Van_Isld,ca,bc,,CVI,
+54.5,-120,1421,1274,Compass_Hill,ca,bc,,Compass,
+49.5941,-121.1,1236,1462,Coquihalla_Summit,ca,bc,,CHCQ,
+49.7,-124.8667,30,10,Courtenay,ca,bc,,YQQ,
+49.36,-115.46,939,988,Cranbrook,ca,bc,,CYXC,
+49.1,-116.52,646,744,Creston,ca,bc,,WJR,
+49.4106,-123.196,,326,Cypress_Bowl_North,ca,bc,,VOE,
+50.32,-122.3,,1904,Darcy,ca,bc,,CFDA,
+55.76,-120.24,655,710,Dawson_Creek,ca,bc,,CYDQ,
+58.25,-130.01,816,1382,Dease_Lake,ca,bc,,CYDL,71222
+50.64,-117.05,,1694,Duncan,ca,bc,,CRDB,
+53.5024,-125.7793,,1048,East_Ootsa,ca,bc,,Ootsa,
+50.5,-119.55,,1106,Falkland,ca,bc,,CHFK,
+49.5,-115.0667,,1572,Fernie,ca,bc,,BFE,
+49.0616,-114.5085,,1516,Flathead,ca,bc,,CFFH,
+58.83,-122.6,379,374,Fort Nelson,ca,bc,y,CYYE,71945
+54.3941,-124.261,718,732,Fort_St_James,ca,bc,,CYJM,
+56.14,-120.44,695,612,Fort_St_John,ca,bc,,CYXJ,
+49.6906,-121.4139,126,816,Fraser_Canyon,ca,bc,,FrCany,
+49.0546,-122.328,63,28,Fraser_Valley,ca,bc,,FrVall,
+52.0403,-118.571,1135,1224,Fred_Laing_Ridge,ca,bc,,BFL,
+49.9181,-122.9188,2044,1810,Garibaldi,ca,bc,,Gari,
+51.4517,-122.6617,1610,1490,Gaspard,ca,bc,,CFGA,
+51.18,-116.59,785,1560,Golden,ca,bc,,CYGE,
+49.02,-118.47,,950,Grand_Forks,ca,bc,,CFGF,
+53.9454,-125.8761,,896,Grassy_Plains,ca,bc,,CFGP,
+50.3217,-120.632,,1468,Helmer_Lake,ca,bc,,CHHL,
+59.42,-120.79,,510,Helmut,ca,bc,,CFHE,
+53.3454,-119.7133,,1788,Holmes,ca,bc,,CFLM,
+49.386,-121.442,39,614,Hope,ca,bc,,CYHE,
+52.3327,-121.4172,846,954,Horsefly,ca,bc,,Horsefly,
+54.398,-126.6482,,828,Houston,ca,bc,,CFHU,
+49.7672,-119.1241,,1354,Ida_Bell3,ca,bc,,CFIA,
+56.47,-124.54,680,940,Ingenika,ca,bc,,CAP6,
+56.59,-125.11,,1108,Ingenika_Pt,ca,bc,,CFIN,
+50.5167,-116.05,,1102,Invemere,ca,bc,,CFTY,
+57.8333,-129.9833,15,1284,Iskut,ca,bc,,Iskut,
+50,-124,96,710,Jervis_Inlet,ca,bc,,CJER,
+50.42,-120.27,345,1016,Kamloops,ca,bc,,CYKA,71887
+54.5,-129.5,765,996,Keays_Peak_Pass,ca,bc,,Keays,
+49.95,-119.4,433,706,Kelowna,ca,bc,,CWLW,71203
+58.727,-127.125,,1058,Ketchika,ca,bc,,CFKA,
+55.435,-127.6467,,734,Kispiox_Hub,ca,bc,,CFKX,
+54.063,-128.639,,238,Kitimat,ca,bc,,CBW2,
+51.3474,-125.6819,,802,Kleenaklinni,ca,bc,,Kleen,
+53.3831,-124.5121,,1186,Kluskus,ca,bc,,CFKK,
+49.7253,-117.1587,,2096,Kokanee,ca,bc,,Kok,
+50.52,-116.3,,1368,Kootenay_Crossing,ca,bc,,KOCR,
+49.0581,-117.04,,1736,Kootenay_Pass,ca,bc,,BSS,
+57.8162,-125,,1710,Kwadacha_Park,ca,bc,,Kwadacha,
+48.8603,-124.2001,,444,Lake_Cowichan,ca,bc,,LkCow,
+49.8311,-120.935,,1248,Larson_Hill,ca,bc,,CHLA,
+55.0818,-125.4774,,1000,Leo_Creek,ca,bc,,CFLE,
+52.6167,-121.55,,960,Likely,ca,bc,,CFLK,
+50.67,-121.92,,1170,Lillooet,ca,bc,,WKF,
+50.7345,-123.854,,1966,Lilooet_Glacier,ca,bc,,Lil_Glac,
+55.6882,-126.0526,,1140,Lovell_Cove,ca,bc,,CFLC,
+56.85,-101.067,,326,Lynn_Lake,ca,bc,,CPLE,71078
+50.22,-121.57,229,864,Lytton,ca,bc,,WLY,
+55.338,-123.094,690,750,Mackenzie,ca,bc,,CYZY,71944
+50.92,-118.8,,1212,Malakwa,ca,bc,,CHMK,
+55.58,-124.23,,1116,Manson,ca,bc,,CFNS,
+52.91,-120.9117,,1470,Mathew,ca,bc,,CFTO,
+53.304,-120.161,,1196,Mcbride,ca,bc,,CAV4,
+54.4,-121.9,,1172,McGregor,ca,bc,,CFMG,
+53.93,-120.64,,1534,McGregor2,ca,bc,,CFRG,
+50.8,-121.3667,,854,McLean_Lake,ca,bc,,CFMK,
+50.0667,-120.75,,1010,Merritt,ca,bc,,CFME,
+57.5,-120.2,,870,Milligan_Hills,ca,bc,,Milligan,
+53.07,-125.41,,1138,Moose_Lake,ca,bc,,CAS2,
+50.3,-122.7163,,940,Mount_Currie,ca,bc,,CWGP,
+56.3643,-123.3656,,1496,Nabeshe,ca,bc,,CFSH,
+53.9425,-126.9278,,1042,Nadina,ca,bc,,CFND,
+50.2664,-117.813,524,1244,Nakusp,ca,bc,,WNP,
+49.164,-123.936,30,126,Nanaimo,ca,bc,,CYCD,
+52.9575,-123.5958,,982,Nazko,ca,bc,,Nazko,
+53.6809,-127.1045,715,1186,Nechako,ca,bc,,Nechako,
+51.5072,-117.422,,1232,Nordic,ca,bc,,CFDC,
+49.0167,-119.4167,283,570,Osoyoos,ca,bc,,WYY,
+51.3717,-127.2343,,408,Pacific_Slope,ca,bc,,Pac_slp,
+49.4879,-123.299,,204,Pam_Rocks,ca,bc,,WAS,
+50.32,-122.805,204,996,Pemberton,ca,bc,,CYPS,
+49.9068,-120.0134,,1616,Pennask_Summit,ca,bc,,CHPK,
+49.491,-119.589,344,696,Penticton,ca,bc,,CYYF,
+55.3937,-122.6233,,1152,Pine_Pass,ca,bc,,BPP,
+57.08,-122.56,,1060,Pink_Mountain,ca,bc,,CFPM,
+52.75,-120,,1654,Pivot_Peak,ca,bc,,Pivot,
+49.25,-124.8167,53,250,Port_Alberni,ca,bc,,YPB,
+50.68,-127.38,22,0,Port-Hardy,ca,bc,y,CYZT,71109
+49.835,-124.525,130,94,Powell River,ca,bc,,CYPW,
+54.17,-130.27,34,56,Prince_Rupert,ca,bc,,CYPR,
+53.9,-122.8,691,610,Prince-George,ca,bc,y,CZXS,71896
+49.4675,-120.512,700,870,Princeton,ca,bc,,CYDC,
+52.07,-124.08,910,1048,Puntzi_Mntn,ca,bc,,CWPU,
+52.978,-122.493,545,640,Quesnel,ca,bc,,CYQZ,71779
+50.58,-118.11,443,1732,Revelstoke,ca,bc,,CYRV,
+51.19,-117.28,1305,2132,Rogers_Pass,ca,bc,,RGPS,
+54.9169,-128.8596,,510,Rosswood,ca,bc,,CFRS,
+50.702,-119.272,351,652,Salmon Arm,ca,bc,,CWSL,
+53.243,-131.821,6,48,Sandspit,ca,bc,,CVZP,71101
+49.474,-123.754,,196,Sechelt,ca,bc,,CVOU,
+58.2335,-121.714,,444,Sikanni_Old_Growth,ca,bc,,SikOld,
+54.49,-127.11,523,1268,Smithers,ca,bc,,CYYD,71950
+49.7662,-118.3826,,1448,South_Monashee,ca,bc,,S_Mon,
+48.24,-133.54,,0,South_Nomad,ca,bc,,SNOM,
+48.24,-133.54,,0,South_Nomad,ca,bc,,SNOM,
+49.733,-114.885,1137,1594,Sparwood,ca,bc,,CWSW,
+49.5,-114.53,1137,1692,Sparwood,ca,bc,,CYSW,
+49.5,-114.53,1137,1692,Sparwood,ca,bc,,CYSW,
+49.702,-123.159,60,692,Squamish,ca,bc,,CYSE,71207
+50.8728,-119.571,393,722,Squilax,ca,bc,,CHQX,
+55.936,-129.991,7,596,Stewart,ca,bc,,CZST,
+58,-128.5,,1078,Stikine_River,ca,bc,,Stikine,
+54.8066,-126.1428,,826,Storey,ca,bc,,Storey,
+49.5387,-125.3858,,1112,Strathcona,ca,bc,,Strat,
+56.3287,-127.0343,,1038,Sustut,ca,bc,,CFST,
+51.7513,-117.761,,1504,Tabernacle,ca,bc,,BAR,
+52.2514,-126.0284,,1494,Talchako,ca,bc,,CFTO,
+51.9052,-124.5978,,1040,Tatla_Lake,ca,bc,,CFTL,
+57.9029,-131.1592,,702,Telegraph_Creek,ca,bc,,CFTC,
+54.517,-128.6,217,272,Terrace,ca,bc,,CYXT,
+50.9264,-118.4446,,1406,Three_Valley,ca,bc,,CHVL,
+56.9,-126.93,,1456,Thutade_Lake,ca,bc,,Thutade,
+58.8478,-125.2317,,946,Toad_River,ca,bc,,CFTD,
+49.144,-125.892,24,52,Tofino,ca,bc,,CYAZ,
+51.9972,-118.103,,1314,Tsar_Creek,ca,bc,,CFTS,
+55.0274,-120.9341,,1214,Tumbler,ca,bc,,CBX7,
+52.87,-119.3,,1340,Valmount,ca,bc,,CFVA,
+56.0127,-129.0998,,512,Van_Dyke,ca,bc,,CFVD,17170
+49.11,-123.11,4,0,Vancouver,ca,bc,,CYVR,71892
+54.014,-124.009,,804,Vanderhoof,ca,bc,,CAU4,
+51.5341,-123.4325,,1712,Vedan_Mountain,ca,bc,,Vedan,
+50.267,-119.272,556,516,Vernon,ca,bc,,CWJV,
+50.058,-126.4363,556,598,Vernon_Lake,ca,bc,,Ver_lk,
+50.284,-119.267,556,516,Vernon_UA,ca,bc,y,CWVK,73033
+48.38,-123.25,20,0,Victoria,ca,bc,,CYYJ,71200
+50.08,-122.57,658,980,Whistler,ca,bc,,CWAE,
+52.11,-122.03,940,824,Williams_Lake,ca,bc,,CYWL,
+51.67,-120.65,1437,1286,Windy_Mountain,ca,bc,,CHWH,
+49.1796,-115.6988,2063,1640,Yahk,ca,bc,,Yahk,
+51.2378,-120.9976,1136,1032,Young_Lake,ca,bc,,CFYK,
+58.73,-94.07,29,2,Churchill,ca,mb,y,CYYQ,71913
+53.183,-99.267,223,226,Grand_Rapids,ca,mb,,CWJD,
+56.35,-94.717,142,92,Gillam airport,ca,mb,,CYGX,
+53.85,-94.65,237,234,Island_Lake_Arpt,ca,mb,,CYIV,
+52.117,-101.233,333,320,Swan_River,ca,mb,,CWEQ,
+58.7,-98.517,262,272,Tadoule_Lake,ca,mb,,CYBQ,
+53.97,-101.1,271,260,The-Pas,ca,mb,y,CYQD,71867
+55.8,-97.867,218,230,Thompson_Arpt,ca,mb,,CYTH,71079
+50.39,-99.55,,430,Wasagaming,ca,mb,,WASA,
+50.39,-99.55,,430,Wasagaming,ca,mb,,WASA,
+49.55,-97.14,251,234,Winnipeg,ca,mb,,CYWG,71849
+46.583,-66.017,22,106,Doaktown,ca,nb,,CADN,
+48.967,-56.067,104,152,Badger,ca,nl,,CWDI,
+51.45,-57.183,31,28,Blanc_Sablon_Arpt,ca,nl,,CYBX,
+53.32,-60.43,47,0,Goose-Bay,ca,nl,y,CYYR,71816
+56.55,-61.683,7,42,Nain_Arpt,ca,nl,,CYDP,71665
+48.55,-58.55,23,36,Stephenville,ca,nl,y,CYJT,71815
+47.62,-52.75,137,116,St-Johns/Mt Pearl,ca,nl,y,CYYT,71802
+52.933,-66.867,551,622,Wabush_Lake_Arpt,ca,nl,,CYWK,
+47.133,-55.333,29,18,Winterland,ca,nl,,CXWT,
+44.53,-63.31,145,0,Halifax,ca,ns,,CYHZ,
+44.4,-65.2,165,110,Kijimkujik,ca,ns,,CWKG,
+43.92,-60.02,5,0,Sable-Island,ca,ns,,CWSA,71600
+44.63,-63.5,51,32,Shearwater,ca,ns,,CAWE,
+46.167,-60.05,62,22,Sydney_Arpt,ca,ns,,CYQY,71758
+43.63,-66.08,43,0,Yarmouth,ca,ns,y,CYQI,71603
+60.14,-123.28,215,320,Fort_Liard,ca,nt,,CYJF,
+61.45,-121.14,168,198,Fort_Simpson,ca,nt,,CYFS,71946
+60.02,-111.97,205,208,Fort-Smith,ca,nt,y,CYSM,71934
+64.117,-117.317,,208,Gameti,ca,nt,,CYRA,
+68.78,-81.25,8,0,Hall-Beach,ca,nt,,CYUX,71733
+60.5,-115.47,164,196,Hay_River,ca,nt,,CYHY,71935
+68.3,-133.48,103,66,Inuvik,ca,nt,y,CYEV,71957
+62.417,-110.683,179,184,Lutselk,ca,nt,,CXLU,
+65.17,-126.48,74,48,Norman_Wells,ca,nt,y,CYVQ,71043
+82.52,-62.3,63,0,Alert,ca,nu,y,CWLT,71082
+64.3,-96.08,18,20,Baker-Lake,ca,nu,y,CYBK,71926
+69.1,-105.13,27,14,Cambridge-Bay,ca,nu,y,CYCB,71925
+64.2,-83.37,64,22,Coral-Harbour,ca,nu,,CYZS,71915
+80,-85.82,10,186,Eureka,ca,nu,y,CYEU,71917
+63.75,-68.55,34,96,Iqaluit,ca,nu,y,CYFB,71909
+74.72,-94.95,67,70,Resolute,ca,nu,y,CYRB,71924
+50.29,-88.91,351,364,Armstrong Airport,ca,on,,CYYW,71841
+52.93,-82.43,9,4,Attawapiskat Airport,ca,on,,CYAT,
+45.07,-77.88,331,376,Bancroft Airport,ca,on,,CNW3,71294
+53.78,-89.88,224,210,Big Trout Lake Airport,ca,on,,CYTL,71208
+42.4,-82.19,198,178,Chatham-0Kent Airport,ca,on,,CNZ3,
+49.11,-81.01,260,248,Cochrane Airport,ca,on,,CYCN,
+49.83,-92.74,411,390,Dryden Airport,ca,on,,CYHD,
+46.35,-82.55,329,302,Elliot Lake Airport,ca,on,,CYEL,
+56,-87.67,13,0,Fort Severn Airport,ca,on,,CYER,
+49.78,-86.94,351,330,Geraldton Airport,ca,on,,CYGQ,71834
+45.88,-82.57,193,198,Gore Bay Airport,ca,on,,CYZE,71733
+47.65,-80.77,347,356,Gowganda Lake Aerodome,ca,on,,CPL6,
+43.1,-79.56,238,184,Hamilton,ca,on,,CYHM,
+49.69,-83.66,245,222,Hearst Airport,ca,on,,CYHF,
+49.41,-82.47,227,204,Kapuskasing Airport,ca,on,y,CYYU,73111
+49.77,-94.38,411,346,Kenora Airport,ca,on,,CYQK,
+53.75,-73.68,304,312,La-Grande,ca,on,,CYAH,71823
+42.57,-79.82,,174,Lake Erie East,ca,on,,LE1,
+45.06,-82.49,,176,Lake Huron Centre,ca,on,,LH1,
+45.34,-80.8,,176,Lake Huron Georgian Bay,ca,on,,LH3,
+43.72,-82.23,,176,Lake Huron South,ca,on,,LH2,
+43.61,-78.73,,74,Lake Ontario West,ca,on,,LO1,
+47.72,-87.06,,182,Lake Superior Centre,ca,on,,LS1,
+52.2,-87.93,245,240,Landsdowne House Airport,ca,on,,CYLH,
+43.03,-81.15,278,274,London Airport,ca,on,,CYXU,71622
+51.28,-80.6,9,8,Moosonee,ca,on,,CWZC,71836
+43.98,-80.75,415,428,Mount Forest Airport,ca,on,,CWLS,
+44.97,-79.31,284,276,Muskoka Airport,ca,on,,CYQA,
+46.37,-79.42,371,346,North Bay Airport,ca,on,,CYYB,71731
+45.19,-75.4,79,72,Ottawa,ca,on,,CYOW,71063
+54.99,-85.44,53,12,Peawanuck Airport,ca,on,,CYPO,71434
+44.23,-78.36,191,228,Peterborough Airport,ca,on,,CYPQ,
+51.45,-90.22,386,346,Pickle-Lake,ca,on,y,CYPL,71845
+51.04,-93.8,383,364,Red Lake Airport,ca,on,,CYRL,
+53.01,-93.04,290,284,Sandy Lake Airport,ca,on,,CZSJ,
+43,-82.31,178,186,Sarnia Chris Hadfield Airport,ca,on,,CYZR,
+46.48,-84.5,192,214,Sault Ste. Marie Airport,ca,on,,CYAM,
+43.19,-79.17,97,82,St. Catharines Airport,ca,on,,CYSN,
+46.63,-80.8,348,302,Sudbury Airport,ca,on,,CYSB,
+48.54,-81.39,295,296,Timmins Airport,ca,on,,CYTS,
+43.4,-79.37,173,74,Toronto,ca,on,,CYYZ,71624
+43.46,-80.38,313,320,Waterloo Airport,ca,on,,CYKF,
+47.58,-84.46,287,452,Wawa,ca,on,,WAWA,
+42.27,-82.96,190,186,Windsor Airport,ca,on,,CYQG,
+46.35,-63.167,54,22,Harrington,ca,pei,,CAHR,71350
+49.46,-74.31,387,398,Chibougamau,ca,pq,,CYMT,71822
+49.53,-71.15,399,302,Chute_des_Passes,ca,pq,,CWDT,
+48.783,-64.483,33,96,Gaspe_Arpt,ca,pq,,CYGP,
+58.45,-78.08,25,2,Inukjuak,ca,pq,y,CYPH,71907
+58.12,-68.42,60,36,Kuujjuaq,ca,pq,y,CYVP,71906
+47.25,-72.47,169,342,La_Tuque,ca,pq,,CWDQ,
+46.3,-76,170,180,Maniwaki,ca,pq,y,CWMW,71722
+49.46,-77.49,281,252,Matagami,ca,pq,,CYNM,
+45.28,-73.45,38,46,Montreal,ca,pq,,CYUL,71627
+50.183,-61.783,11,2,Natashquan_Arpt,ca,pq,,CYNA,71813
+47.55,-74.37,445,446,Parent,ca,pq,,CWPK,71726
+46.48,-71.23,73,152,Quebec,ca,pq,,CYQB,
+54.8,-66.8,521,590,Schefferville,ca,pq,,CGKL,71828
+50.22,-66.27,55,14,Sept-Iles,ca,pq,y,CYZV,71811
+46.33,-72.43,110,32,Shawinigan,ca,pq,,SHAW,
+48.04,-77.46,337,320,Val_Dor,ca,pq,,CYVO,
+48.431,-69.368,,92,Vcnty_Forestville,ca,pq,,CQEO,
+51.035,-72.343,,508,Vcnty_Lac_Albanel,ca,pq,,CQTM,
+50.397,-68.494,,358,Vcnty_Manicouagan,ca,pq,,CMLZ,
+51.413,-76.08,244,302,Vcnty_Nemiscau,ca,pq,,CMNE,
+55.833,-108.433,434,420,Buffalo_Narrow_Arpt,ca,sk,,CYVT,71077
+49.633,-109.517,1271,1152,Cypress_Hills_Park,ca,sk,,CWVP,
+49.217,-102.967,581,578,Estevan_Arpt,ca,sk,,CYEN,71862
+55.25,-105.617,509,388,Key_Lake,ca,sk,,CYKJ,
+55.15,-105.267,379,382,La_Ronge,ca,sk,,CXOX,71922
+54.133,-108.517,477,472,Meadow_Lake_Arpt,ca,sk,,CYLJ,
+53.333,-104,373,364,Nipawin,ca,sk,,CWBU,
+50.433,-104.667,577,572,Regina_Arpt,ca,sk,,CYQR,71863
+52.167,-106.7,504,470,Saskatoon_Intl_Arpt,ca,sk,,CYXE,
+59.25,-105.833,250,294,Stony_Rapids_Arpt,ca,sk,,CYSF,
+53.55,-106.4,,528,Waskasieu,ca,sk,,WASK,
+53.55,-106.4,,528,Waskasieu,ca,sk,,WASK,
+47.57,-124.33,,58,Quillayute,us,wa,y,KUIL,72797
+47.41,-117.38,,748,Spokane,us,wa,,KOTX,
+47.41,-117.38,,748,Spokane,us,wa,,KOTX,
+62.25,-140.52,649,676,Beaver_Creek_Arpt,ca,yt,,CYXQ,
+61.22,-139.02,801,1204,Burwash,ca,yt,,CYDB,
+62.07,-136.11,369,742,Carmacks,ca,yt,,CXCK,
+64.02,-139.07,370,512,Dawson_Arpt,ca,yt,,CYDA,71966
+62.12,-133.22,717,1126,Faro_Arpt,ca,yt,,CZFA,71949
+60.46,-137.35,599,1224,Haines_Junction,ca,yt,,CWHT,
+63.37,-135.52,504,874,Mayo_Arpt,ca,yt,,CYMA,71965
+67.34,-139.5,251,472,Old_Crow_Arpt,ca,yt,,CYOC,71044
+66.59,-136.12,,880,Rock River,ca,yt,,CWRR,
+60.1,-132.45,705,808,Teslin_Arpt,ca,yt,,CYZW,71045
+60.07,-128.49,690,814,Watson_Lake_Arpt,ca,yt,,CYQH,71953
+60.43,-135.04,703,1108,Whitehorse_Arpt,ca,yt,y,CYXY,71964
