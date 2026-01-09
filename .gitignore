@@ -1,0 +1,5 @@
+deprecated/
+figures/
+logs/
+*.tmp
+*test*
