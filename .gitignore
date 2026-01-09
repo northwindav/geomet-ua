@@ -3,3 +3,4 @@ figures/
 logs/
 *.tmp
 *test*
+*.ipynb
