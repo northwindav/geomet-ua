@@ -1,6 +1,9 @@
+__pycache__/
+.pytest_cache/
 deprecated/
 figures/
 logs/
+out/
 *.tmp
 *test*
 *.ipynb

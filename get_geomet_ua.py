@@ -4,6 +4,14 @@
 
 # Requires: pandas, numpy, requests, xarray, metpy lxml, netCDF4
 
+# To-do (Thread-safety):
+# get_geomet_profiles() currently mutates module-level globals (POINT, TIME_WINDOW_H, TIME_STEP_H, PROFILE_CACHE, caches) 
+# and restores them. This is not thread-safe for parallel calls. Refactor to:
+#   1. Accept context dict with point/time params instead of mutating globals
+#   2. Return cache state with results instead of using module-level cache
+#   3. Consider using queue.Queue or concurrent.futures for thread-safe cache access
+#   4. Or use process-level isolation if parallelizing across models/points
+
 # Overplot examples:
 # Overplot all times on a single figure
 # OVERPLOT = {"enable": True, "by_time": True, "by_model": False}
@@ -33,7 +41,7 @@ import metpy.calc as mpcalc
 from metpy.units import units
 
 # -------------------- CONFIG --------------------
-POINT = {"lat": 60.1, "lon": -135.0} 
+POINT = {"lat": 60.1, "lon": -135.0}  # Overridable entry point for lat/lon
 OUTDIR = "out"
 MODELS = ["HRDPS", "RDPS", "GDPS"]  # test all three models
 TIME_STEP_H = 3
@@ -70,8 +78,9 @@ CAPABILITIES_CACHE_EXPIRY_HOURS = 24  # Capabilities rarely change; cache 24h
 MODEL_COLORS = {"HRDPS": "tab:red", "GDPS": "tab:blue", "RDPS": "tab:green"}
 
 # -------------------- GLOBAL SESSION (Connection Pooling) --------------------
-# Reuse HTTP session for all requests to enable connection pooling
-SESSION = requests.Session()  # Automatically handles keep-alive and connection reuse
+# Reuse a shared HTTP session for connection pooling and keep-alive; avoids repeated TLS handshakes
+# and reduces latency across the many GeoMet requests this script makes.
+SESSION = requests.Session()
 
 # Threading lock for non-thread-safe scipy operations (e.g., integration)
 SCIPY_LOCK = threading.Lock()
@@ -92,10 +101,18 @@ MODEL_LAYER_TEMPLATES = {
 # Variable names (confirmed from GeoMet for all models)
 # Note: Wind direction uses WDIR (GDPS), WD (HRDPS, RDPS)
 VARIABLE_NAMES = {
-    "T": "TT",           # Temperature
-    "DEPR": "ES",        # Dewpoint depression (all models use ES)
-    "WSPD": "WSPD",      # Wind speed
-    "WDIR": ["WDIR", "WD"]  # Wind direction (both variants)
+    "T": "TT",            # Temperature
+    "DEPR": "ES",         # Dewpoint depression (all models use ES)
+    "WSPD": "WSPD",       # Wind speed
+    "WDIR": ["WDIR", "WD"],  # Wind direction (both variants)
+    "GZ": "GZ"            # Geopotential height
+}
+
+# Fallback layer names for geopotential height (model heights) if discovery misses them
+GZ_LAYER_FALLBACK = {
+    "GDPS": "GDPS.ETA_GZ",
+    "RDPS": "RDPS.ETA_GZ",
+    "HRDPS": "HRDPS.CONTINENTAL_GZ"
 }
 
 # -------------------- CACHE for OVERPLOT --------------------
@@ -358,6 +375,7 @@ def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None)
     cache_key = make_cache_key(layer, time_iso, lat, lon, bbox)
     cached = get_cached_response(cache_key)
     if cached is not None:
+        print(f"[WCS cache hit] layer={layer} time={time_iso} lat={lat:.3f} lon={lon:.3f}")
         return cached
     
     WMS_CALLS += 1
@@ -388,9 +406,11 @@ def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None)
         
         r = SESSION.get(url, timeout=30)
     except Exception as e:
+        print(f"[WCS error] layer={layer} time={time_iso} lat={lat:.3f} lon={lon:.3f} err={e}")
         return np.nan
-    
+
     if not r.ok:
+        print(f"[WCS HTTP {r.status_code}] layer={layer} time={time_iso} bbox={bbox}")
         return np.nan
     
     # Parse GeoTIFF response
@@ -417,6 +437,7 @@ def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None)
         save_cached_response(cache_key, val)
         return val
     except Exception as e:
+        print(f"[WCS parse fallback] layer={layer} time={time_iso} lat={lat:.3f} lon={lon:.3f} err={e}")
         # Fallback: try text/plain if GeoTIFF fails
         result = wms_getfeatureinfo_fallback(layer, time_iso, lat, lon, bbox, size_px, extra_params)
         # Cache fallback result too
@@ -451,25 +472,50 @@ def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, size_px, 
     min_p = min(pressure_levels)
     max_p = max(pressure_levels)
     
-    url = f"{WMS_URL}?service=WCS&version=2.0.1&request=GetCoverage"
-    url += f"&coverageId={layer_base}"
-    url += f"&format=application/x-netcdf"  # NetCDF better for multi-dimensional data
-    url += f"&subset=Lat({miny},{maxy})&subset=Long({minx},{maxx})"
-    url += f"&subset=time(\"{time_iso}\")"
-    
-    # Try elevation subset (some layers use 'elevation', others 'pressure')
-    # Format: subset=elevation(min,max) in hPa
-    url += f"&subset=elevation({min_p},{max_p})"
-    
-    try:
-        r = SESSION.get(url, timeout=60)
+    base_url = f"{WMS_URL}?service=WCS&version=2.0.1&request=GetCoverage"
+    base_url += f"&coverageId={layer_base}"
+    base_url += f"&format=application/x-netcdf"  # NetCDF better for multi-dimensional data
+    base_url += f"&subset=Lat({miny},{maxy})&subset=Long({minx},{maxx})"
+    base_url += f"&subset=time(\"{time_iso}\")"
+
+    # Try pressure-based subset first; fall back to elevation if needed
+    subset_dims = ["pressure", "isobaric", "elevation"]
+    response = None
+    for subset_dim in subset_dims:
+        url = f"{base_url}&subset={subset_dim}({min_p},{max_p})"
+        try:
+            r = SESSION.get(url, timeout=60)
+        except Exception as e:
+            print(f"[WCS vertical error] layer={layer_base} subset={subset_dim} time={time_iso} err={e}")
+            continue
         if not r.ok:
-            # Fallback: elevation dimension might not support ranges
-            return None
-            
+            print(f"[WCS vertical HTTP {r.status_code}] layer={layer_base} subset={subset_dim} time={time_iso}")
+            continue
+        response = r
+        break
+
+    if response is None:
+        save_cached_response(cache_key, None)
+        return None
+
+    try:
         # Parse NetCDF response with xarray
         import io
-        ds = xr.open_dataset(io.BytesIO(r.content), engine='h5netcdf')
+        # Try scipy engine first (more commonly available), then h5netcdf
+        ds = None
+        for engine in ['scipy', 'h5netcdf', None]:
+            try:
+                ds = xr.open_dataset(io.BytesIO(response.content), engine=engine)
+                break
+            except (ValueError, OSError) as engine_err:
+                # Engine not available or data format incompatible, try next
+                if engine is None:
+                    # Last attempt failed
+                    raise engine_err
+                continue
+        
+        if ds is None:
+            return None
         
         # Extract point values for all pressure levels
         # NetCDF structure varies; look for pressure/elevation dimension
@@ -514,6 +560,11 @@ def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, size_px, 
         
     except Exception as e:
         # NetCDF parsing failed; cache None to avoid re-attempting
+        # Only log unexpected errors (suppress common engine/format issues that are handled by fallback)
+        err_str = str(e).lower()
+        suppress_patterns = ['engine', 'unrecognized', 'not a valid netcdf']
+        if not any(pattern in err_str for pattern in suppress_patterns):
+            print(f"[WCS vertical parse fail] layer={layer_base} time={time_iso} err={e}")
         save_cached_response(cache_key, None)
         return None
 
@@ -611,6 +662,11 @@ def build_height(profile):
     prof["r_kgkg"] = mixing_ratio_from_e(prof["pressure_hpa"], prof["e_hPa"])
     prof["Tv_K"]  = virtual_temperature(prof["T_K"], prof["r_kgkg"])
     prof = prof.sort_values("pressure_hpa", ascending=False).reset_index(drop=True)
+
+    # If model-provided heights are present and finite, honor them; otherwise compute hypsometric
+    if "z_m" in prof.columns and prof["z_m"].notna().all():
+        return prof
+
     z = [0.0]
     for i in range(1, len(prof)):
         p1 = prof.loc[i-1, "pressure_hpa"]
@@ -668,8 +724,10 @@ def ventilation_index(mix_h_m, mean_wspd_ms):
     return float(mix_h_m * mean_wspd_ms)
 
 # -------------------- MAIN WORKFLOW (GeoMet WMS) --------------------
-def run_model(model):
+def run_model(model, time_window_h=None, time_step_h=None):
     """Run model data retrieval using layer discovery."""
+    tw = int(time_window_h) if time_window_h is not None else TIME_WINDOW_H
+    ts = int(time_step_h) if time_step_h is not None else TIME_STEP_H
     model_timer_start = time.perf_counter()
     
     # Fetch capabilities once and extract time dimension
@@ -685,18 +743,19 @@ def run_model(model):
     lyr_DEPR = cand["DEPR"][0] if cand["DEPR"] else None
     lyr_WSPD = cand["WSPD"][0] if cand["WSPD"] else None
     lyr_WDIR = cand["WDIR"][0] if cand["WDIR"] else None
+    lyr_GZ   = cand["GZ"][0] if cand["GZ"] else GZ_LAYER_FALLBACK.get(model)
 
-    # Verify we found all required layers
+    # Verify we found required layers (GZ is optional; we fall back to hypsometric heights)
     if not all([lyr_T, lyr_DEPR, lyr_WSPD, lyr_WDIR]):
-        raise RuntimeError(f"[{model}] Missing required layers: T={bool(lyr_T)}, DEPR={bool(lyr_DEPR)}, " 
+        raise RuntimeError(f"[{model}] Missing required layers: T={bool(lyr_T)}, DEPR={bool(lyr_DEPR)}, "
                           f"WSPD={bool(lyr_WSPD)}, WDIR={bool(lyr_WDIR)}")
 
-    # choose T0→T48 in 3h steps (subset if fewer times available)
+    # choose T0→T? in configurable steps (subset if fewer times available)
     t0 = times[0]
-    desired = [t0 + pd.Timedelta(hours=h) for h in range(0, TIME_WINDOW_H+1, TIME_STEP_H)]
+    desired = [t0 + pd.Timedelta(hours=h) for h in range(0, tw+1, ts)]
     chosen = [t for t in desired if t in times]
     if not chosen:  # fallback: stride through whatever is available
-        chosen = times[::TIME_STEP_H] or times
+        chosen = times[::ts] or times
 
     # Pressure levels to fetch
     levels = [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100]
@@ -706,6 +765,7 @@ def run_model(model):
     acc_DEPR = make_level_accessor(caps, lyr_DEPR)
     acc_WS   = make_level_accessor(caps, lyr_WSPD)
     acc_WD   = make_level_accessor(caps, lyr_WDIR)
+    acc_GZ   = make_level_accessor(caps, lyr_GZ)
 
     # Spatial setup - use model-specific BBOX
     bbox_deg = MODEL_BBOX_DEG.get(model, 0.1)  # Default to 0.1 if model not configured
@@ -727,8 +787,9 @@ def run_model(model):
             DEPR_profile = wcs_get_vertical_profile(lyr_DEPR, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
             WSPD_profile = wcs_get_vertical_profile(lyr_WSPD, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
             WDIR_profile = wcs_get_vertical_profile(lyr_WDIR, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
+            GZ_profile = wcs_get_vertical_profile(lyr_GZ, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model) if lyr_GZ else None
             
-            # If all profiles retrieved successfully, combine them
+            # If core profiles retrieved successfully, combine them (GZ optional)
             if all(p is not None for p in [T_profile, DEPR_profile, WSPD_profile, WDIR_profile]):
                 # Combine profiles by pressure level
                 for p in levels:
@@ -745,6 +806,7 @@ def run_model(model):
                     
                     wspd_val = WSPD_profile.get(p)
                     wdir_val = WDIR_profile.get(p)
+                    gz_val = GZ_profile.get(p) if GZ_profile else None
                     if wspd_val is None or wdir_val is None:
                         continue
                     
@@ -755,8 +817,11 @@ def run_model(model):
                     wdir, wspd = wind_dir_speed_from_uv(float(u_ms.magnitude), float(v_ms.magnitude))
                     wspd_kmh = wspd * 3.6
                     
-                    rows.append({"pressure_hpa": int(p), "T_C": T_c, "Td_C": Td_c,
-                                "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh})
+                    row = {"pressure_hpa": int(p), "T_C": T_c, "Td_C": Td_c,
+                           "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh}
+                    if gz_val is not None and np.isfinite(gz_val):
+                        row["z_m"] = float(gz_val)
+                    rows.append(row)
         
         # FALLBACK: If vertical slice failed or disabled, use individual level requests
         if not rows:
@@ -784,6 +849,7 @@ def run_model(model):
                 # Wind from speed/direction
                 wspd_val = q(acc_WS)
                 wdir_val = q(acc_WD)
+                gz_val = q(acc_GZ) if acc_GZ else np.nan
                 if not all(np.isfinite(x) for x in [T_c, Td_c, wspd_val, wdir_val]):
                     return None
                 
@@ -794,8 +860,11 @@ def run_model(model):
                 wdir, wspd = wind_dir_speed_from_uv(float(u_ms.magnitude), float(v_ms.magnitude))
                 wspd_kmh = wspd * 3.6
 
-                return {"pressure_hpa": int(p), "T_C": T_c, "Td_C": Td_c,
-                        "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh}
+                row = {"pressure_hpa": int(p), "T_C": T_c, "Td_C": Td_c,
+                       "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh}
+                if np.isfinite(gz_val):
+                    row["z_m"] = float(gz_val)
+                return row
 
             futures = [executor.submit(fetch_row, p) for p in levels]
 
@@ -863,6 +932,87 @@ def run_model(model):
     model_elapsed = time.perf_counter() - model_timer_start
     # Return all profiles collected for this model
     return {"profiles": dict(PROFILE_CACHE), "elapsed": model_elapsed}
+
+
+# -------------------- PUBLIC API --------------------
+def get_geomet_profiles(lat, lon, model, time_window_h=None, time_step_h=None):
+    """Return forecast profiles for a point from GeoMet as a tidy DataFrame.
+
+    Parameters
+    ----------
+    lat, lon : float
+        Point location in decimal degrees.
+    model : str
+        One of HRDPS, RDPS, GDPS.
+    time_window_h : int, optional
+        Horizon in hours (default: TIME_WINDOW_H).
+    time_step_h : int, optional
+        Step in hours between forecasts (default: TIME_STEP_H).
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: pressure_hPa, temperature_C, dew point temperature_C,
+        wind direction_degree, wind speed_kmh, geopotential height_dm,
+        forecast_hour.
+    """
+
+    global POINT, PROFILE_CACHE, WMS_CALLS, CACHE_HITS, CACHE_MISSES
+
+    # Save existing point and override for this call
+    orig_point = POINT.copy()
+
+    POINT = {"lat": float(lat), "lon": float(lon)}
+    tw = int(time_window_h) if time_window_h is not None else TIME_WINDOW_H
+    ts = int(time_step_h) if time_step_h is not None else TIME_STEP_H
+
+    # Reset per-call caches to avoid stale profiles
+    PROFILE_CACHE = {}
+    WMS_CALLS = 0
+    CACHE_HITS = 0
+    CACHE_MISSES = 0
+
+    try:
+        result = run_model(model, time_window_h=tw, time_step_h=ts)
+        profiles = result.get("profiles", {})
+        if not profiles:
+            return pd.DataFrame()
+
+        # Determine base time (first available) for forecast hour offsets
+        times = [t for (_, t) in profiles.keys()]
+        base_time = min(times)
+
+        records = []
+        for (m, t_iso), prof in profiles.items():
+            fh = int((t_iso - base_time).total_seconds() // 3600)
+            df = prof.copy()
+            df = df.rename(columns={
+                "pressure_hpa": "pressure_hPa",
+                "T_C": "temperature_C",
+                "Td_C": "dew point temperature_C",
+                "wind_dir_deg": "wind direction_degree",
+                "wind_spd_kmh": "wind speed_kmh"
+            })
+            # geopotential height in decameters for consistency with plotting code
+            df["geopotential height_dm"] = df.get("z_m", np.nan) / 10.0
+            df["forecast_hour"] = fh
+            records.append(df[[
+                "pressure_hPa",
+                "temperature_C",
+                "dew point temperature_C",
+                "wind direction_degree",
+                "wind speed_kmh",
+                "geopotential height_dm",
+                "forecast_hour"
+            ]].dropna(subset=["pressure_hPa", "temperature_C", "dew point temperature_C"]))
+
+        if not records:
+            return pd.DataFrame()
+        return pd.concat(records, ignore_index=True)
+
+    finally:
+        # Restore globals
+        POINT = orig_point
 
 def main():
     t_start = time.perf_counter()
