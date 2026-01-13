@@ -419,15 +419,16 @@ def reshape_eccc_df(df_raw, fx_hours=[0, 6, 12, 18, 24, 36, 48]):
 
 
 # ------Function to create a name for the output figure
-def make_title(site, type, date, hour, fx_hour=None, zoom=False):
+def make_title(site, type, date, hour, fx_hour=None, zoom=False, model=None):
     if type == "obs":
         if zoom:
             return f'{site}_{type}_{date}_{hour}UTC_skewT_loweratmos.png'
         return f'{site}_{type}_{date}_{hour}UTC_skewT.png'
     elif type == "fx":
+        model_prefix = f"{model}_" if model else ""
         if zoom:
-            return f'{site}_{type}_{date}_{hour}UTCp{fx_hour}_skewT_loweratmos.png'
-        return f'{site}_{type}_{date}_{hour}UTCp{fx_hour}_skewT.png'
+            return f'{site}_{model_prefix}{type}_{date}_{hour}UTCp{fx_hour}_skewT_loweratmos.png'
+        return f'{site}_{model_prefix}{type}_{date}_{hour}UTCp{fx_hour}_skewT.png'
 
 
 def resolve_site_prefix(stn_id, stn_iata_code, stn_wmo_id, stn_lat, stn_lon):
@@ -578,7 +579,24 @@ def plot_and_save_forecasts(df, model_time, model, station_meta, plot_config):
     for fx_hour in sorted(df['forecast_hour'].unique()):
         df_fh = df[df['forecast_hour'] == fx_hour]
         title = f"{model} Forecast for {station_meta['stn_name']}: Model init {plot_config['date']} {plot_config['hour']}UTC. Valid {model_time + pd.Timedelta(hours=fx_hour)}UTC (+{fx_hour}h)"
-        subtitle = f"{station_meta['stn_iata_code']}/{station_meta['stn_wmo_id']}, Lat: {station_meta['stn_lat']:.2f}°, Lon: {station_meta['stn_lon']:.2f}°, Elev: {station_meta['stn_elev']} m"
+        
+        # Get model surface elevation from geopotential height at highest pressure (surface)
+        # geopotential height_dm is in meters (despite the name), at surface level
+        surface_data = df_fh[df_fh['pressure_hPa'] == df_fh['pressure_hPa'].max()]
+        if not surface_data.empty and 'geopotential height_dm' in surface_data.columns:
+            model_elev_m = int(surface_data['geopotential height_dm'].iloc[0] * 10)  # Convert dm to m
+        else:
+            model_elev_m = None
+        
+        # Build subtitle with elevation info
+        if station_meta['stn_elev'] > 0 and model_elev_m is not None:
+            elev_str = f"Elev: {station_meta['stn_elev']} m / Model elev: {model_elev_m} m"
+        elif model_elev_m is not None:
+            elev_str = f"Model elev: {model_elev_m} m"
+        else:
+            elev_str = f"Elev: {station_meta['stn_elev']} m"
+        
+        subtitle = f"{station_meta['stn_iata_code']}/{station_meta['stn_wmo_id']}, Lat: {station_meta['stn_lat']:.2f}°, Lon: {station_meta['stn_lon']:.2f}°, {elev_str}"
 
         skewt = plot_skewt(df_fh, zoom=plot_config['zoom'])
 
@@ -590,7 +608,7 @@ def plot_and_save_forecasts(df, model_time, model, station_meta, plot_config):
 
         skewt.ax.text(1.08, 0.5, 'Wind (km/h)', transform=skewt.ax.transAxes, rotation=90, va='center', ha='left', fontsize='medium')
 
-        filename = make_title(site_prefix, plot_config['skew_type'], plot_config['date'], plot_config['hour'], fx_hour, zoom=plot_config['zoom'])
+        filename = make_title(site_prefix, plot_config['skew_type'], plot_config['date'], plot_config['hour'], fx_hour, zoom=plot_config['zoom'], model=model)
         os.makedirs('figures', exist_ok=True)
         filepath = os.path.join('figures', filename)
         skewt.ax.figure.savefig(filepath)

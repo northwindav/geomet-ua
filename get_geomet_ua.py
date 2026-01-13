@@ -60,7 +60,14 @@ CANVAS_PX = (50, 50)  # Smaller canvas sufficient for point sampling
 
 # REQUEST VERTICAL SLICES (all pressure levels in one WCS call)
 # This reduces API calls from 11/variable to 1/variable per timestep
-USE_VERTICAL_SLICE = True  # Set False to revert to single-level requests
+# NOTE: Vertical slice currently fails for all models on GeoMet (returns empty/invalid data)
+# Disabled to avoid timeouts; individual level fallback is reliable and handles all requests
+USE_VERTICAL_SLICE = False  # Set False to revert to single-level requests (currently disabled)
+
+# USE WMS DIRECTLY (skip WCS GetCoverage attempts)
+# WCS GetCoverage returns invalid image data for all current requests, requiring WMS fallback
+# Skipping WCS and using WMS GetFeatureInfo directly saves time
+USE_WMS_DIRECT = True  # Set True to skip WCS attempts and use WMS GetFeatureInfo directly
 
 # REQUEST CACHING
 # Cache API responses to disk to avoid redundant requests across runs
@@ -371,6 +378,10 @@ def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None)
     """
     global WMS_CALLS
     
+    # If USE_WMS_DIRECT is enabled, skip WCS entirely and go straight to WMS
+    if USE_WMS_DIRECT:
+        return wms_getfeatureinfo_fallback(layer, time_iso, lat, lon, bbox, size_px, extra_params)
+    
     # Check cache first
     cache_key = make_cache_key(layer, time_iso, lat, lon, bbox)
     cached = get_cached_response(cache_key)
@@ -615,8 +626,12 @@ def pick_first(cand_dict, keys):
         if lst: return lst[0]
     return None
 
-def make_level_accessor(caps_xml, layer_name):
-    """Return callable that builds layer name for a given pressure level."""
+def make_level_accessor(caps_xml, layer_name, model=None):
+    """Return callable that builds layer name for a given pressure level.
+    
+    For GDPS upper levels (100-400 hPa), appends .3h suffix since base layers
+    are not available on GeoMet (only forecast timestep variants exist).
+    """
     dims = layer_dims(caps_xml, layer_name)
     if any(k in dims for k in ("elevation", "pressure")):
         dim_key = "elevation" if "elevation" in dims else "pressure"
@@ -626,7 +641,12 @@ def make_level_accessor(caps_xml, layer_name):
     m = re.search(r"\.(\d+)$", layer_name)
     if m:
         pre = layer_name[:m.start(0)]  # everything before the last dot
-        return lambda p: (f"{pre}.{int(p)}", None)
+        
+        # GDPS upper levels (100-400 hPa) require .3h suffix
+        if model == "GDPS":
+            return lambda p: (f"{pre}.{int(p)}.3h" if 100 <= p <= 400 else f"{pre}.{int(p)}", None)
+        else:
+            return lambda p: (f"{pre}.{int(p)}", None)
     
     # Check for underscore-suffix pattern (e.g., VAR_1000mb -> VAR_500mb)
     m = re.search(r"_(\d+)(mb)?$", layer_name)
@@ -760,12 +780,12 @@ def run_model(model, time_window_h=None, time_step_h=None):
     # Pressure levels to fetch
     levels = [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100]
 
-    # Create layer accessors
-    acc_T    = make_level_accessor(caps, lyr_T)
-    acc_DEPR = make_level_accessor(caps, lyr_DEPR)
-    acc_WS   = make_level_accessor(caps, lyr_WSPD)
-    acc_WD   = make_level_accessor(caps, lyr_WDIR)
-    acc_GZ   = make_level_accessor(caps, lyr_GZ)
+    # Create layer accessors (pass model for GDPS-specific handling)
+    acc_T    = make_level_accessor(caps, lyr_T, model=model)
+    acc_DEPR = make_level_accessor(caps, lyr_DEPR, model=model)
+    acc_WS   = make_level_accessor(caps, lyr_WSPD, model=model)
+    acc_WD   = make_level_accessor(caps, lyr_WDIR, model=model)
+    acc_GZ   = make_level_accessor(caps, lyr_GZ, model=model)
 
     # Spatial setup - use model-specific BBOX
     bbox_deg = MODEL_BBOX_DEG.get(model, 0.1)  # Default to 0.1 if model not configured
