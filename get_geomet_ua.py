@@ -763,9 +763,11 @@ def run_model(model, time_window_h=None, time_step_h=None):
     lyr_DEPR = cand["DEPR"][0] if cand["DEPR"] else None
     lyr_WSPD = cand["WSPD"][0] if cand["WSPD"] else None
     lyr_WDIR = cand["WDIR"][0] if cand["WDIR"] else None
-    lyr_GZ   = cand["GZ"][0] if cand["GZ"] else GZ_LAYER_FALLBACK.get(model)
+    
+    # Model surface elevation (terrain height) - not pressure-level dependent
+    lyr_SURFACE_ELEV = GZ_LAYER_FALLBACK.get(model)
 
-    # Verify we found required layers (GZ is optional; we fall back to hypsometric heights)
+    # Verify we found required layers
     if not all([lyr_T, lyr_DEPR, lyr_WSPD, lyr_WDIR]):
         raise RuntimeError(f"[{model}] Missing required layers: T={bool(lyr_T)}, DEPR={bool(lyr_DEPR)}, "
                           f"WSPD={bool(lyr_WSPD)}, WDIR={bool(lyr_WDIR)}")
@@ -785,7 +787,6 @@ def run_model(model, time_window_h=None, time_step_h=None):
     acc_DEPR = make_level_accessor(caps, lyr_DEPR, model=model)
     acc_WS   = make_level_accessor(caps, lyr_WSPD, model=model)
     acc_WD   = make_level_accessor(caps, lyr_WDIR, model=model)
-    acc_GZ   = make_level_accessor(caps, lyr_GZ, model=model)
 
     # Spatial setup - use model-specific BBOX
     bbox_deg = MODEL_BBOX_DEG.get(model, 0.1)  # Default to 0.1 if model not configured
@@ -799,6 +800,11 @@ def run_model(model, time_window_h=None, time_step_h=None):
     for t_iso in chosen:
         time_str = t_iso.strftime('%Y-%m-%dT%H:%M:%SZ')
         
+        # Query model surface elevation once per timestep (not pressure-dependent)
+        surface_elev_m = np.nan
+        if lyr_SURFACE_ELEV:
+            surface_elev_m = wcs_getcoverage(lyr_SURFACE_ELEV, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), None)
+        
         # OPTIMIZATION: Try to fetch entire vertical profile in single WCS call
         rows = []
         if USE_VERTICAL_SLICE:
@@ -807,9 +813,8 @@ def run_model(model, time_window_h=None, time_step_h=None):
             DEPR_profile = wcs_get_vertical_profile(lyr_DEPR, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
             WSPD_profile = wcs_get_vertical_profile(lyr_WSPD, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
             WDIR_profile = wcs_get_vertical_profile(lyr_WDIR, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
-            GZ_profile = wcs_get_vertical_profile(lyr_GZ, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model) if lyr_GZ else None
             
-            # If core profiles retrieved successfully, combine them (GZ optional)
+            # If core profiles retrieved successfully, combine them
             if all(p is not None for p in [T_profile, DEPR_profile, WSPD_profile, WDIR_profile]):
                 # Combine profiles by pressure level
                 for p in levels:
@@ -826,7 +831,6 @@ def run_model(model, time_window_h=None, time_step_h=None):
                     
                     wspd_val = WSPD_profile.get(p)
                     wdir_val = WDIR_profile.get(p)
-                    gz_val = GZ_profile.get(p) if GZ_profile else None
                     if wspd_val is None or wdir_val is None:
                         continue
                     
@@ -838,9 +842,8 @@ def run_model(model, time_window_h=None, time_step_h=None):
                     wspd_kmh = wspd * 3.6
                     
                     row = {"pressure_hpa": int(p), "T_C": T_c, "Td_C": Td_c,
-                           "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh}
-                    if gz_val is not None and np.isfinite(gz_val):
-                        row["z_m"] = float(gz_val)
+                           "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh,
+                           "model_surface_elev_m": surface_elev_m}
                     rows.append(row)
         
         # FALLBACK: If vertical slice failed or disabled, use individual level requests
@@ -869,7 +872,6 @@ def run_model(model, time_window_h=None, time_step_h=None):
                 # Wind from speed/direction
                 wspd_val = q(acc_WS)
                 wdir_val = q(acc_WD)
-                gz_val = q(acc_GZ) if acc_GZ else np.nan
                 if not all(np.isfinite(x) for x in [T_c, Td_c, wspd_val, wdir_val]):
                     return None
                 
@@ -881,9 +883,8 @@ def run_model(model, time_window_h=None, time_step_h=None):
                 wspd_kmh = wspd * 3.6
 
                 row = {"pressure_hpa": int(p), "T_C": T_c, "Td_C": Td_c,
-                       "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh}
-                if np.isfinite(gz_val):
-                    row["z_m"] = float(gz_val)
+                       "wind_dir_deg": wdir, "wind_spd_ms": wspd, "wind_spd_kmh": wspd_kmh,
+                       "model_surface_elev_m": surface_elev_m}
                 return row
 
             futures = [executor.submit(fetch_row, p) for p in levels]
@@ -1015,6 +1016,8 @@ def get_geomet_profiles(lat, lon, model, time_window_h=None, time_step_h=None):
             })
             # geopotential height in decameters for consistency with plotting code
             df["geopotential height_dm"] = df.get("z_m", np.nan) / 10.0
+            # model surface elevation in decameters
+            df["model_surface_elev_dm"] = df.get("model_surface_elev_m", np.nan) / 10.0
             df["forecast_hour"] = fh
             records.append(df[[
                 "pressure_hPa",
@@ -1023,6 +1026,7 @@ def get_geomet_profiles(lat, lon, model, time_window_h=None, time_step_h=None):
                 "wind direction_degree",
                 "wind speed_kmh",
                 "geopotential height_dm",
+                "model_surface_elev_dm",
                 "forecast_hour"
             ]].dropna(subset=["pressure_hPa", "temperature_C", "dew point temperature_C"]))
 

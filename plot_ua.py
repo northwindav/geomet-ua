@@ -580,13 +580,15 @@ def plot_and_save_forecasts(df, model_time, model, station_meta, plot_config):
         df_fh = df[df['forecast_hour'] == fx_hour]
         title = f"{model} Forecast for {station_meta['stn_name']}: Model init {plot_config['date']} {plot_config['hour']}UTC. Valid {model_time + pd.Timedelta(hours=fx_hour)}UTC (+{fx_hour}h)"
         
-        # Get model surface elevation from geopotential height at highest pressure (surface)
-        # geopotential height_dm is in meters (despite the name), at surface level
-        surface_data = df_fh[df_fh['pressure_hPa'] == df_fh['pressure_hPa'].max()]
-        if not surface_data.empty and 'geopotential height_dm' in surface_data.columns:
-            model_elev_m = int(surface_data['geopotential height_dm'].iloc[0] * 10)  # Convert dm to m
+        # Get model surface elevation from dedicated column
+        if 'model_surface_elev_dm' in df_fh.columns and df_fh['model_surface_elev_dm'].notna().any():
+            model_elev_m = int(df_fh['model_surface_elev_dm'].iloc[0] * 10)  # Convert dm to m
         else:
             model_elev_m = None
+        
+        # Handle negative model elevation: if negative and station elevation is known, add them together
+        if model_elev_m is not None and model_elev_m < 0 and station_meta['stn_elev'] > 0:
+            model_elev_m = station_meta['stn_elev'] + model_elev_m
         
         # Build subtitle with elevation info
         if station_meta['stn_elev'] > 0 and model_elev_m is not None:
@@ -600,7 +602,7 @@ def plot_and_save_forecasts(df, model_time, model, station_meta, plot_config):
 
         skewt = plot_skewt(df_fh, zoom=plot_config['zoom'])
 
-        skewt.ax.set_title(title, fontsize='large', pad=24, loc='center')
+        skewt.ax.set_title(title, fontsize=11, pad=24, loc='center')
         skewt.ax.text(0.5, 1.02, subtitle, fontsize='medium', ha='center', va='bottom', transform=skewt.ax.transAxes)
 
         current_utc = pd.Timestamp.utcnow()
@@ -654,7 +656,7 @@ if __name__ == '__main__':
             title = f'User Skew-T valid {date} {hour}UTC'
             subtitle = 'User-provided profile'
             skewt = plot_skewt(df, zoom=zoom)
-            skewt.ax.set_title(title, fontsize='large', pad=24, loc='center')
+            skewt.ax.set_title(title, fontsize=11, pad=24, loc='center')
             skewt.ax.text(0.5, 1.02, subtitle, fontsize='medium', ha='center', va='bottom', transform=skewt.ax.transAxes)
 
             current_utc = pd.Timestamp.utcnow()
