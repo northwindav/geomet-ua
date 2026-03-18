@@ -1,0 +1,11 @@
+site_name: Geomet Upper Air
+
+nav:
+  - Home: index.md
+  - Requirements: requirements.md
+  - Data Sources: datasources.md
+  - Examples: examples.md
+  - Changelog: changelog.md
+  - FAQs: faqs.md
+
+theme: readthedocs

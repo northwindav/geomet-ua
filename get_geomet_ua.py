@@ -1,6 +1,6 @@
 # get_geomet_ua.py
 # Smith Dec 2025
-# Mucking around to see how easily we can retrieve model forecast data for fx skewTs
+# Retrieves upper air forecast data from models available on MSC Geomet
 
 # Requires: pandas, numpy, requests, xarray, metpy lxml, netCDF4
 
@@ -11,15 +11,6 @@
 #   2. Return cache state with results instead of using module-level cache
 #   3. Consider using queue.Queue or concurrent.futures for thread-safe cache access
 #   4. Or use process-level isolation if parallelizing across models/points
-
-# Overplot examples:
-# Overplot all times on a single figure
-# OVERPLOT = {"enable": True, "by_time": True, "by_model": False}
-# Overplot multiple timesteps for a single model
-# OVERPLOT = {"enable": True, "by_time": False, "by_model": True}
-
-# T0→T48 every 3h (or until last available time). Includes venting/inversion summary per time.
-# Optional overplot: overlay models at same valid time, or overlay timesteps for same model.
 #
 # Docs:
 # - GeoMet overview & usage: https://eccc-msc.github.io/open-data/msc-geomet/readme_en/
@@ -43,13 +34,12 @@ from metpy.units import units
 # -------------------- CONFIG --------------------
 POINT = {"lat": 60.1, "lon": -135.0}  # Overridable entry point for lat/lon
 OUTDIR = "out"
-MODELS = ["HRDPS", "RDPS", "GDPS"]  # test all three models
-TIME_STEP_H = 3
-TIME_WINDOW_H = 48
+TIME_STEP_H = 3 # 3-hour timesteps should be sufficient under normal conditions, but 1-hour is available for some models
+TIME_WINDOW_H = 48  # Max time to retrieve data.
 WMS_URL = "https://geo.weather.gc.ca/geomet"  # GeoMet-Weather WMS
 
-# PERFORMANCE OPTIMIZATIONS
-# Model-specific BBOX (degrees) based on grid spacing (HRDPS: ~2.5km, RDPS: ~10km, GDPS: ~15km)
+# Performance parameters
+# Because we have to pull tiles via WMS, specify how big of a tile to pull for each model type. Smaller is better.
 MODEL_BBOX_DEG = {
     "HRDPS": 0.03,   # ~2.5km grid → 3x grid cells for safety
     "RDPS": 0.12,    # ~10km grid → ~1.2x grid cell
@@ -59,19 +49,14 @@ MODEL_BBOX_DEG = {
 CANVAS_PX = (50, 50)  # Smaller canvas sufficient for point sampling
 
 # REQUEST VERTICAL SLICES (all pressure levels in one WCS call)
-# This reduces API calls from 11/variable to 1/variable per timestep
-# NOTE: Vertical slice currently fails for all models on GeoMet (returns empty/invalid data)
-# Disabled to avoid timeouts; individual level fallback is reliable and handles all requests
-USE_VERTICAL_SLICE = False  # Set False to revert to single-level requests (currently disabled)
+# This reduces API calls from 11/variable to 1/variable per timestep but as of March 2026 doesn't work
+USE_VERTICAL_SLICE = False  # Set False to revert to single-level requests 
 
-# USE WMS DIRECTLY (skip WCS GetCoverage attempts)
-# WCS GetCoverage returns invalid image data for all current requests, requiring WMS fallback
-# Skipping WCS and using WMS GetFeatureInfo directly saves time
-USE_WMS_DIRECT = True  # Set True to skip WCS attempts and use WMS GetFeatureInfo directly
+# USE WMS DIRECTLY
+USE_WMS_DIRECT = True  # Set True to skip WCS attempts and use WMS GetFeatureInfo directly. Avoids the inevitable failover from trying WCS as of spring 2026.
 
 # REQUEST CACHING
-# Cache API responses to disk to avoid redundant requests across runs
-# Especially useful during development/testing or when re-running with different plot options
+# Cache requests so that data aren't re-downloaded for repeated plots.
 ENABLE_CACHE = True
 CACHE_DIR = os.path.join(OUTDIR, ".cache")  # Cache location
 CACHE_EXPIRY_HOURS = 1  # Cache expiration time in hours. Tune based on need (forecast data updates ~4x/day)
@@ -79,31 +64,21 @@ CACHE_EXPIRY_HOURS = 1  # Cache expiration time in hours. Tune based on need (fo
 # CAPABILITIES CACHING
 # Cache WMS GetCapabilities responses to avoid re-fetching layer metadata
 CACHE_CAPABILITIES = True
-CAPABILITIES_CACHE_EXPIRY_HOURS = 24  # Capabilities rarely change; cache 24h
-
-# Colors per model for overplot
-MODEL_COLORS = {"HRDPS": "tab:red", "GDPS": "tab:blue", "RDPS": "tab:green"}
+CAPABILITIES_CACHE_EXPIRY_HOURS = 24  
 
 # -------------------- GLOBAL SESSION (Connection Pooling) --------------------
 # Reuse a shared HTTP session for connection pooling and keep-alive; avoids repeated TLS handshakes
-# and reduces latency across the many GeoMet requests this script makes.
+# and reduces latency across the many GeoMet requests this script makes. 
+# note: This makes a huuuuuge difference in run-time.
 SESSION = requests.Session()
 
 # Threading lock for non-thread-safe scipy operations (e.g., integration)
 SCIPY_LOCK = threading.Lock()
 
-# counters
+# counters for performance monitoring.
 WMS_CALLS = 0
 CACHE_HITS = 0
 CACHE_MISSES = 0
-
-# Hardcoded layer name templates for each model (confirmed from GeoMet Capabilities)
-# All follow pattern: {MODEL_PREFIX}PRES_{VARIABLE}.{PRESSURE}
-MODEL_LAYER_TEMPLATES = {
-    "GDPS": "GDPS.PRES_{var}.{pressure}",
-    "HRDPS": "HRDPS.CONTINENTAL.PRES_{var}.{pressure}",
-    "RDPS": "RDPS.PRES_{var}.{pressure}"
-}
 
 # Variable names (confirmed from GeoMet for all models)
 # Note: Wind direction uses WDIR (GDPS), WD (HRDPS, RDPS)
@@ -188,7 +163,7 @@ def save_cached_response(cache_key, data):
     try:
         with open(cache_file, 'wb') as f:
             pickle.dump(data, f)
-    except Exception as e:
+    except Exception:
         pass  # Cache write failure shouldn't break the script
 
 def get_cached_capabilities(model):
@@ -233,12 +208,6 @@ def save_cached_capabilities(model, caps_xml):
     except Exception:
         pass
 
-def magnus_dewpoint_c(t_c, rh_pct):
-    """Dewpoint from T (°C) and RH (%) via Magnus (over water)."""
-    a, b = 17.625, 243.04
-    rh = np.clip(rh_pct, 0.1, 100.0)
-    gamma = np.log(rh/100.0) + (a*t_c)/(b + t_c)
-    return (b*gamma)/(a - gamma)
 
 def wind_dir_speed_from_uv(u_ms, v_ms):
     spd_ms = math.hypot(u_ms, v_ms)
@@ -369,13 +338,8 @@ def parse_time_values(raw_list):
             continue
     return out
 
+# Retrieve raster coverage and cache requests
 def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None):
-    """
-    WCS GetCoverage -> retrieve raster coverage, extract value at lat/lon.
-    Much more reliable than WMS GetFeatureInfo for point sampling.
-    EPSG:4326 axis order: (lat, lon).
-    Includes request caching to avoid redundant API calls.
-    """
     global WMS_CALLS
     
     # If USE_WMS_DIRECT is enabled, skip WCS entirely and go straight to WMS
@@ -392,22 +356,6 @@ def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None)
     WMS_CALLS += 1
     miny, minx, maxy, maxx = bbox
     width, height = size_px
-    
-    params = {
-        "service": "WCS", "version": "2.0.1", "request": "GetCoverage",
-        "coverageId": layer,
-        "format": "image/tiff",
-        "subsettingCrs": "http://www.opengis.net/gml/srs/epsg.xml#4326",
-        "subset": [
-            f"Lat({miny},{maxy})",
-            f"Long({minx},{maxx})"
-        ],
-        "size": f"x({width}),y({height})"
-    }
-    if time_iso:
-        params["subset"].append(f"time(\"{time_iso}\")")
-    if extra_params:
-        params.update(extra_params)
     
     try:
         # WCS uses array-style subset parameters
@@ -455,13 +403,11 @@ def wcs_getcoverage(layer, time_iso, lat, lon, bbox, size_px, extra_params=None)
         save_cached_response(cache_key, result)
         return result
 
-def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, size_px, pressure_levels, model):
-    """
-    OPTIMIZED: Request entire vertical profile (all pressure levels) in a single WCS call.
-    Returns dict: {pressure_hpa: value} for all requested levels.
-    Uses NetCDF format to retrieve multi-level data efficiently.
-    Includes request caching to avoid redundant API calls.
-    """
+# This is the ideal method, but as of spring 2026 does not work on geomet. 
+# Current settings skip this call entirely, but it can be used and will fail
+# over to WMS if unsuccessful.
+def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, pressure_levels):
+
     global WMS_CALLS
     
     # Check cache first
@@ -473,7 +419,6 @@ def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, size_px, 
     WMS_CALLS += 1
     
     miny, minx, maxy, maxx = bbox
-    width, height = size_px
     
     # Build layer name from template (assumes no pressure-specific suffix)
     # Extract base layer name (remove pressure suffix if present)
@@ -533,7 +478,7 @@ def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, size_px, 
         result = {}
         
         # Find the data variable (skip coordinate vars)
-        data_vars = [v for v in ds.data_vars if 'lat' not in v.lower() and 'lon' not in v.lower()]
+        data_vars = [v for v in ds.data_vars if 'lat' not in str(v).lower() and 'lon' not in str(v).lower()]
         if not data_vars:
             return None
             
@@ -579,11 +524,10 @@ def wcs_get_vertical_profile(layer_template, time_iso, lat, lon, bbox, size_px, 
         save_cached_response(cache_key, None)
         return None
 
+# Mis-named, because this is the primary function used to retrieve data from Geomet as the
+#  single WCS call does not currently work with Geomet.
 def wms_getfeatureinfo_fallback(layer, time_iso, lat, lon, bbox, size_px, extra_params=None):
-    """
-    WMS GetFeatureInfo fallback -> numeric value at lat/lon (raw value).
-    EPSG:4326 axis order in WMS 1.3.0 is (lat, lon).
-    """
+
     miny, minx, maxy, maxx = bbox
     width, height = size_px
     i = int(round((lon - minx) / (maxx - minx) * width))
@@ -603,7 +547,7 @@ def wms_getfeatureinfo_fallback(layer, time_iso, lat, lon, bbox, size_px, extra_
     
     try:
         r = SESSION.get(WMS_URL, params=params, timeout=30)
-    except Exception as e:
+    except Exception:
         return np.nan
     
     if not r.ok: 
@@ -620,18 +564,10 @@ def wms_getfeatureinfo_fallback(layer, time_iso, lat, lon, bbox, size_px, extra_
                 pass
     return np.nan
 
-def pick_first(cand_dict, keys):
-    for k in keys:
-        lst = cand_dict.get(k, [])
-        if lst: return lst[0]
-    return None
 
+# Clean up layer accessor names. 
 def make_level_accessor(caps_xml, layer_name, model=None):
-    """Return callable that builds layer name for a given pressure level.
-    
-    For GDPS upper levels (100-400 hPa), appends .3h suffix since base layers
-    are not available on GeoMet (only forecast timestep variants exist).
-    """
+
     dims = layer_dims(caps_xml, layer_name)
     if any(k in dims for k in ("elevation", "pressure")):
         dim_key = "elevation" if "elevation" in dims else "pressure"
@@ -657,7 +593,7 @@ def make_level_accessor(caps_xml, layer_name, model=None):
     # Default: append _XXXmb
     return lambda p: (f"{layer_name}_{int(p)}mb", None)
 
-# --- Met calculations for height, inversion, venting ---
+# --- Met calculations for height ---
 def vapor_pressure_from_td(td_c):
     a, b = 17.625, 243.04
     return 6.1094 * np.exp(a*td_c/(b+td_c))
@@ -697,53 +633,7 @@ def build_height(profile):
     prof["z_m"] = z
     return prof
 
-def potential_temperature(t_k, p_hpa):
-    p0 = 1000.0
-    Rd_cp = 0.2854
-    return t_k * (p0/p_hpa)**Rd_cp
-
-def detect_inversion(prof, max_depth_m=2000.0):
-    p = prof.sort_values("z_m")
-    for i in range(len(p)-1):
-        dz = p.loc[i+1,"z_m"] - p.loc[i,"z_m"]
-        if dz <= 0: continue
-        dT = p.loc[i+1,"T_C"] - p.loc[i,"T_C"]
-        if dT > 0 and p.loc[i,"z_m"] <= max_depth_m:
-            j = i+1
-            while j < len(p)-1 and (p.loc[j+1,"T_C"] - p.loc[j,"T_C"]) > 0:
-                j += 1
-            base_z = p.loc[i,"z_m"]; top_z = p.loc[j,"z_m"]
-            dT_total = p.loc[j,"T_C"] - p.loc[i,"T_C"]
-            return base_z, top_z, dT_total
-    return None
-
-def current_mixing_height(prof):
-    p = prof.sort_values("z_m")
-    theta_sfc = potential_temperature(p.loc[0,"T_K"], p.loc[0,"pressure_hpa"])
-    theta_env = potential_temperature(p["T_K"].values, p["pressure_hpa"].values)
-    idxs = np.where(theta_env - theta_sfc <= 1.0)[0]
-    if len(idxs) == 0: return 0.0
-    return float(p.loc[idxs[-1],"z_m"])
-
-def warming_needed_to_break(prof, base_z, top_z):
-    p = prof.sort_values("z_m")
-    theta_sfc = potential_temperature(p.loc[0,"T_K"], p.loc[0,"pressure_hpa"])
-    j = (p["z_m"] - top_z).abs().idxmin()
-    theta_top = potential_temperature(p.loc[j,"T_K"], p.loc[j,"pressure_hpa"])
-    return float(theta_top - theta_sfc)
-
-def crossover_temperature_from_td(td_c, target_rh_pct):
-    a, b = 17.625, 243.04
-    e = vapor_pressure_from_td(td_c)
-    es_needed = e / (target_rh_pct/100.0)
-    ln_term = np.log(es_needed/6.1094)
-    T = (b * ln_term) / (a - ln_term)
-    return float(T)
-
-def ventilation_index(mix_h_m, mean_wspd_ms):
-    return float(mix_h_m * mean_wspd_ms)
-
-# -------------------- MAIN WORKFLOW (GeoMet WMS) --------------------
+# Conducts the actual calls
 def run_model(model, time_window_h=None, time_step_h=None):
     """Run model data retrieval using layer discovery."""
     tw = int(time_window_h) if time_window_h is not None else TIME_WINDOW_H
@@ -806,13 +696,15 @@ def run_model(model, time_window_h=None, time_step_h=None):
             surface_elev_m = wcs_getcoverage(lyr_SURFACE_ELEV, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), None)
         
         # OPTIMIZATION: Try to fetch entire vertical profile in single WCS call
+        # As of spring 2026 fails, so suggest keeping USE_VERTICAL_SLICE = FALSE
+        # until when and if this feature functions on geomet.
         rows = []
         if USE_VERTICAL_SLICE:
             # Attempt multi-level retrieval for each variable
-            T_profile = wcs_get_vertical_profile(lyr_T, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
-            DEPR_profile = wcs_get_vertical_profile(lyr_DEPR, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
-            WSPD_profile = wcs_get_vertical_profile(lyr_WSPD, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
-            WDIR_profile = wcs_get_vertical_profile(lyr_WDIR, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), levels, model)
+            T_profile = wcs_get_vertical_profile(lyr_T, time_str, POINT["lat"], POINT["lon"], bbox, levels)
+            DEPR_profile = wcs_get_vertical_profile(lyr_DEPR, time_str, POINT["lat"], POINT["lon"], bbox, levels)
+            WSPD_profile = wcs_get_vertical_profile(lyr_WSPD, time_str, POINT["lat"], POINT["lon"], bbox, levels)
+            WDIR_profile = wcs_get_vertical_profile(lyr_WDIR, time_str, POINT["lat"], POINT["lon"], bbox, levels)
             
             # If core profiles retrieved successfully, combine them
             if all(p is not None for p in [T_profile, DEPR_profile, WSPD_profile, WDIR_profile]):
@@ -846,10 +738,9 @@ def run_model(model, time_window_h=None, time_step_h=None):
                            "model_surface_elev_m": surface_elev_m}
                     rows.append(row)
         
-        # FALLBACK: If vertical slice failed or disabled, use individual level requests
+        # Script will fail into using WMS every time so we use WMS to request each pressure level instead.
         if not rows:
             def fetch_row(p):
-                """Fetch data for a single pressure level."""
                 def q(accessor):
                     lid, extra = accessor(p)
                     return wcs_getcoverage(lid, time_str, POINT["lat"], POINT["lon"], bbox, (w,h), extra)
@@ -906,47 +797,8 @@ def run_model(model, time_window_h=None, time_step_h=None):
         # Derived vertical coordinates & venting/inversion summary
         prof = build_height(df)
 
-        # Cache for overplot
+        # Cache
         PROFILE_CACHE[(model, t_iso)] = prof.copy()
-
-        # Inversion detection
-        inv = detect_inversion(prof, max_depth_m=2000.0)
-        inv_text = "No inversion detected within 2 km AGL."
-        warm_req = None
-        if inv:
-            base_z, top_z, dT = inv
-            warm_req = warming_needed_to_break(prof, base_z, top_z)
-            inv_text = (f"Inversion: base ~{base_z:.0f} m, top ~{top_z:.0f} m; strength ΔT ≈ {dT:.1f} °C. "
-                        f"Estimated surface warming to break to top ≈ {warm_req:.1f} °C.")
-
-        # Mixing height (current), transport wind & VI
-        mix_h = current_mixing_height(prof)
-        mean_wspd = float(prof.loc[prof["z_m"] <= max(mix_h, 1.0), "wind_spd_ms"].mean())
-        mean_wspd_kmh = mean_wspd * 3.6
-        VI = ventilation_index(mix_h, mean_wspd)
-
-        # Near-surface crossover temps (RH targets)
-        td0 = float(prof.loc[0,"Td_C"])
-        t50 = crossover_temperature_from_td(td0, 50.0)   # RH=50%
-        t30 = crossover_temperature_from_td(td0, 30.0)   # RH=30%
-
-        # Aloft wind mixing-down hint: check 850 hPa vs warming requirement
-        w850 = prof.loc[(prof["pressure_hpa"]==850), "wind_spd_ms"]
-        if len(w850):
-            w850 = float(w850.iloc[0])
-            if warm_req is not None and warm_req <= 3.0 and w850 >= 10.0:  # ~20 kt
-                mixdown_note = f"Aloft winds ~850 hPa strong; with ≥{warm_req:.1f} °C warming, momentum mix-down plausible."
-            elif warm_req is not None and warm_req > 5.0:
-                mixdown_note = "Strong inversion; >5 °C warming likely required before aloft winds mix down."
-            else:
-                mixdown_note = "Aloft wind mix-down limited by stability."
-        else:
-            mixdown_note = "850 hPa wind unavailable; mix-down assessment limited."
-
-        winter_note = ("Winter sun angle & high albedo may limit daytime warming and boundary‑layer growth; "
-                       "ventilation estimates should be treated conservatively.")
-
-        # Note: File output and plotting handled by parent script
 
     executor.shutdown(wait=True)
     
@@ -955,28 +807,12 @@ def run_model(model, time_window_h=None, time_step_h=None):
     return {"profiles": dict(PROFILE_CACHE), "elapsed": model_elapsed}
 
 
-# -------------------- PUBLIC API --------------------
+# Master function, imported by plot_ua.py. This function calls all related retrieval and caching functions.
 def get_geomet_profiles(lat, lon, model, time_window_h=None, time_step_h=None):
-    """Return forecast profiles for a point from GeoMet as a tidy DataFrame.
-
-    Parameters
-    ----------
-    lat, lon : float
-        Point location in decimal degrees.
-    model : str
-        One of HRDPS, RDPS, GDPS.
-    time_window_h : int, optional
-        Horizon in hours (default: TIME_WINDOW_H).
-    time_step_h : int, optional
-        Step in hours between forecasts (default: TIME_STEP_H).
-
-    Returns
-    -------
-    pd.DataFrame
-        Columns: pressure_hPa, temperature_C, dew point temperature_C,
-        wind direction_degree, wind speed_kmh, geopotential height_dm,
-        forecast_hour.
-    """
+    #   Returns a pd.DataFrame containing:
+    #    Columns: pressure_hPa, temperature_C, dew point temperature_C,
+    #    wind direction_degree, wind speed_kmh, geopotential height_dm,
+    #    forecast_hour.
 
     global POINT, PROFILE_CACHE, WMS_CALLS, CACHE_HITS, CACHE_MISSES
 
@@ -1004,7 +840,7 @@ def get_geomet_profiles(lat, lon, model, time_window_h=None, time_step_h=None):
         base_time = min(times)
 
         records = []
-        for (m, t_iso), prof in profiles.items():
+        for (_, t_iso), prof in profiles.items():
             fh = int((t_iso - base_time).total_seconds() // 3600)
             df = prof.copy()
             df = df.rename(columns={
@@ -1038,35 +874,3 @@ def get_geomet_profiles(lat, lon, model, time_window_h=None, time_step_h=None):
         # Restore globals
         POINT = orig_point
 
-def main():
-    t_start = time.perf_counter()
-    print(f"[CONFIG] Models: {MODELS}")
-    print(f"[CONFIG] Vertical slice: {USE_VERTICAL_SLICE}, Cache: {ENABLE_CACHE}")
-    print(f"[CONFIG] Time window: T+0 to T+{TIME_WINDOW_H} every {TIME_STEP_H}h")
-    print(f"[CONFIG] Point: {POINT['lat']:.2f}°N, {POINT['lon']:.2f}°E\n")
-    
-    # PARALLEL MODEL PROCESSING: Run all models concurrently
-    print(f"[PROCESSING] Running {len(MODELS)} models in parallel...\n")
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(MODELS)) as executor:
-        futures = {executor.submit(run_model, m): m for m in MODELS}
-        
-        for future in concurrent.futures.as_completed(futures):
-            m = futures[future]
-            try:
-                result = future.result()
-                model_elapsed = result["elapsed"]
-                print(f"[{m}] Completed in {model_elapsed:.1f} s")
-            except Exception as e:
-                print(f"[{m}] FAILED: {e}")
-
-    elapsed = time.perf_counter() - t_start
-    total_requests = CACHE_HITS + CACHE_MISSES
-    cache_hit_rate = (CACHE_HITS / total_requests * 100) if total_requests > 0 else 0
-    
-    print(f"[STATS] Total API calls: {WMS_CALLS}; elapsed: {elapsed:.1f} s")
-    if ENABLE_CACHE:
-        print(f"[CACHE] Hits: {CACHE_HITS}, Misses: {CACHE_MISSES}, Hit rate: {cache_hit_rate:.1f}%")
-        print(f"[CACHE] Saved {CACHE_HITS} API calls (cache location: {CACHE_DIR})")
-
-if __name__ == "__main__":
-    main()

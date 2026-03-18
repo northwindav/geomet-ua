@@ -3,6 +3,7 @@ __pycache__/
 deprecated/
 figures/
 logs/
+site/
 out/
 *.tmp
 *test*

@@ -8,13 +8,13 @@ param(
     [string]$Date = "",
     
     [Alias('H')]
-    [string]$Hour = "00",
+    [string]$Hour = "",
     
     [Alias('m')]
     [string]$Model = "hrdps",
     
     [Alias('s')]
-    [string]$StationId = "fake",
+    [string]$StationId = "NoStn",
     
     [string]$Lat = "61.1",
     [string]$Lon = "-132.2",
@@ -34,13 +34,13 @@ Usage: plot_ua_wrapper.ps1 [options]
 
 Options (user-specified):
   -k, -SkewType     fx|obs (default: obs)
-  -d, -Date         Date in YYYY-MM-DD (UTC)
-  -H, -Hour         Hour in UTC (00, 06, 12, 18). Default: 00
+  -d, -Date         Date in YYYY-MM-DD (UTC). Default today.
+  -H, -Hour         Hour in UTC (00, 06, 12, 18). Default: most recent synoptic UTC hour
   -m, -Model        HRDPS | RDPS | GDPS | all (default: hrdps)
   -s, -StationId    Station ID (3-5 alphanumeric IATA. E.g. CYEG for Edmonton)
       -Lat          Latitude (used when station-id omitted)
       -Lon          Longitude (used when station-id omitted)
-  -f, -InputFile    Path to CSV with required columns (bypasses data retrieval)
+  -f, -InputFile    Path to CSV with required columns (bypasses data retrieval). See documentation for required format and headers.
   -l, -Logfile      Logfile path (default: logs/retrieve_soundings.log)
   -h, -Help         Show this help
 
@@ -78,6 +78,12 @@ if ($SkewType -ne "fx" -and $SkewType -ne "obs") {
     exit 1
 }
 
+# Set default hour to most recent synoptic UTC hour if not provided
+if ([string]::IsNullOrEmpty($Hour)) {
+    $utcHour = (Get-Date).ToUniversalTime().Hour
+    $Hour = "{0:D2}" -f ([Math]::Floor($utcHour / 6) * 6)
+}
+
 # Validate hour
 if ($Hour -notmatch "^(00|06|12|18)$") {
     Write-Error "hour must be one of 00, 06, 12, 18"
@@ -86,15 +92,20 @@ if ($Hour -notmatch "^(00|06|12|18)$") {
 }
 
 # Validate and process model selection
-$Model = $Model.ToUpper()
-if ($Model -eq "ALL") {
-    $Models = @("HRDPS", "RDPS", "GDPS")
-} elseif ($Model -match "^(HRDPS|RDPS|GDPS)$") {
-    $Models = @($Model)
+if ($SkewType -eq "fx") {
+    $Model = $Model.ToUpper()
+    if ($Model -eq "ALL") {
+        $Models = @("HRDPS", "RDPS", "GDPS")
+    } elseif ($Model -match "^(HRDPS|RDPS|GDPS)$") {
+        $Models = @($Model)
+    } else {
+        Write-Error "model must be HRDPS, RDPS, GDPS, or all"
+        Show-Usage
+        exit 3
+    }
 } else {
-    Write-Error "model must be HRDPS, RDPS, GDPS, or all"
-    Show-Usage
-    exit 3
+    $Model = ""
+    $Models = @("")
 }
 
 # Determine location mode
@@ -108,7 +119,7 @@ if (-not [string]::IsNullOrEmpty($InputFile)) {
     $LocationMode = "file"
 } elseif (-not [string]::IsNullOrEmpty($StationId)) {
     if ($StationId -notmatch "^[A-Za-z0-9]{3,5}$") {
-        Write-Error "station-id must be 3-5 alphanumeric characters"
+        Write-Error "station-id must be a 3-5 character alphanumeric IATA/TC code, prefixed with 'C' for Canadian stations (e.g., CYEG)"
         Show-Usage
         exit 6
     }
@@ -123,7 +134,7 @@ if (-not [string]::IsNullOrEmpty($InputFile)) {
 
 # Validate obs requires station
 if ($SkewType -eq "obs" -and $LocationMode -eq "latlon") {
-    Write-Error "Observed soundings currently require station-id. Forecasts may be requested for any point in the model domain"
+    Write-Error "Observed soundings currently require station-id. Forecasts may be requested for any point in the model domains"
     Show-Usage
     exit 5
 }
@@ -152,7 +163,7 @@ if ($LocationMode -eq "station") {
     $LogContent += "`nInput file: $InputFile"
 }
 
-$LogContent += "`n=========================================="
+$LogContent += "`n-----Begin plot_ua.py output-----`n"
 
 # Write initial log content
 Set-Content -Path $Logfile -Value $LogContent
@@ -191,5 +202,5 @@ foreach ($ModelItem in $Models) {
     & python $PythonArgs
 }
 
-Add-Content -Path $Logfile -Value "=========================================="
+Add-Content -Path $Logfile -Value "-----End plot_ua.py output-----`n"
 Add-Content -Path $Logfile -Value "Script complete at $((Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss"))."
