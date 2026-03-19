@@ -7,7 +7,7 @@ param(
     [Alias('d')]
     [string]$Date = "",
     
-    [Alias('H')]
+    [Alias('u')]
     [string]$Hour = "",
     
     [Alias('m')]
@@ -28,6 +28,7 @@ param(
     [Alias('c')]
     [string]$Config = "ua_config.json",
     
+    [Alias('h', '?')]
     [switch]$Help
 )
 
@@ -38,7 +39,7 @@ Usage: plot_ua_wrapper.ps1 [options]
 Options (user-specified):
   -k, -SkewType     fx|obs (default: obs)
   -d, -Date         Date in YYYY-MM-DD (UTC). Default today.
-  -H, -Hour         Hour in UTC (00, 06, 12, 18). Default: most recent synoptic UTC hour
+    -u, -Hour         Hour in UTC (00, 06, 12, 18). Default: most recent synoptic UTC hour
   -m, -Model        HRDPS | RDPS | GDPS | all (default: hrdps)
     -s, -StationId    Station ID (3-5 alphanumeric IATA/ICAO. E.g. CWSE for Edmonton/Stony Plain)
       -Lat          Latitude (used when station-id omitted)
@@ -62,7 +63,7 @@ Exit Codes:
   5 = Obs mode requires station-id
   6 = Invalid station-id format
   7 = Input file not found
-    8 = Config file not found
+  8 = Config file not found
 "@
 }
 

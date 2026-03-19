@@ -18,13 +18,13 @@ Use the PowerShell wrapper for typical runs.
 Observed sounding (station mode):
 
 ```powershell
-.\plot_ua_wrapper.ps1 -k obs -d 2026-03-19 -H 00 -s CWSE
+.\plot_ua_wrapper.ps1 -k obs -d 2026-03-19 -u 00 -s CWSE
 ```
 
 Forecast sounding (model mode):
 
 ```powershell
-.\plot_ua_wrapper.ps1 -k fx -d 2026-03-19 -H 00 -m GDPS -s CYEG
+.\plot_ua_wrapper.ps1 -k fx -d 2026-03-19 -u 00 -m GDPS -s CYEG
 ```
 
 Use a specific config file:
