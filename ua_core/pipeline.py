@@ -33,6 +33,7 @@ class RequestOptions:
     lon: Optional[float]
     model: str
     input_file: Optional[str]
+    validate_only: bool = False
 
 
 def log_message(msg: str, logfile: Optional[str] = None):
@@ -221,6 +222,16 @@ def run_request(opts: RequestOptions, cfg: Dict):
     station_found = location["station_found"]
 
     _validate_domain(opts, station_meta)
+
+    if opts.validate_only:
+        log_message(
+            (
+                "Validation-only mode: request parsed and validated "
+                f"(skew_type={opts.skew_type}, model={opts.model}, location_mode={opts.location_mode})."
+            ),
+            opts.logfile,
+        )
+        return
 
     figures_dir = cfg["paths"]["figures_dir"]
     plot_config = {

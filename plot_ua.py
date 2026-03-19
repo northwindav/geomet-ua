@@ -45,6 +45,11 @@ def parse_args():
     )
     parser.add_argument("--input_file", type=str, default=None, help="CSV profile input to bypass retrieval")
     parser.add_argument("--config", type=str, default=DEFAULT_CONFIG_PATH, help="Path to config JSON")
+    parser.add_argument(
+        "--validate_only",
+        action="store_true",
+        help="Validate arguments and pipeline setup only; skip data retrieval and plotting",
+    )
 
     return parser.parse_args()
 
@@ -68,6 +73,7 @@ def main():
         lon=args.lon,
         model=args.model.upper(),
         input_file=args.input_file,
+        validate_only=args.validate_only,
     )
 
     try:

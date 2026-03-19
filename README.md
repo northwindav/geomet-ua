@@ -24,13 +24,19 @@ Observed sounding (station mode):
 Forecast sounding (model mode):
 
 ```powershell
-.\plot_ua_wrapper.ps1 -k fx -d 2026-03-19 -u 00 -m GDPS -s CYEG
+.\plot_ua_wrapper.ps1 -k fx -d 2026-03-19 -u 00 -m GDPS -s CWSE
 ```
 
 Use a specific config file:
 
 ```powershell
-.\plot_ua_wrapper.ps1 -k fx -m RDPS -s CYEG -c ua_config.json
+.\plot_ua_wrapper.ps1 -k fx -m RDPS -s CWSE -c ua_config.json
+```
+
+Validation-only check (no retrieval, no plotting):
+
+```powershell
+.\plot_ua_wrapper.ps1 -k fx -s CWSE -v
 ```
 
 ## Project Structure
@@ -97,6 +103,12 @@ Main runtime settings are in ua_config.json:
 - bufr: enabled flag, bulletin list, URL template, timeout.
 - elevation_api: enabled flag, endpoint template, timeout.
 - defaults: model, hour, forecast time window and step.
+
+Wrapper input rules:
+
+- One location mode is required: station-id, lat/lon pair, or input file.
+- Observed mode requires station-id.
+- Hour short flag is -u (help is -h).
 
 ## Outputs
 

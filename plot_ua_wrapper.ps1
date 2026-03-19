@@ -14,10 +14,10 @@ param(
     [string]$Model = "hrdps",
     
     [Alias('s')]
-    [string]$StationId = "NoStn",
+    [string]$StationId = "",
     
-    [string]$Lat = "61.1",
-    [string]$Lon = "-132.2",
+    [string]$Lat = "",
+    [string]$Lon = "",
     
     [Alias('f')]
     [string]$InputFile = "",
@@ -27,43 +27,48 @@ param(
 
     [Alias('c')]
     [string]$Config = "ua_config.json",
+
+    [Alias('v')]
+    [switch]$ValidateOnly,
     
     [Alias('h', '?')]
     [switch]$Help
 )
 
 function Show-Usage {
-    Write-Host @"
+        Write-Host @"
 Usage: plot_ua_wrapper.ps1 [options]
 
 Options (user-specified):
-  -k, -SkewType     fx|obs (default: obs)
-  -d, -Date         Date in YYYY-MM-DD (UTC). Default today.
+    -k, -SkewType     fx|obs (default: obs)
+    -d, -Date         Date in YYYY-MM-DD (UTC). Default today.
     -u, -Hour         Hour in UTC (00, 06, 12, 18). Default: most recent synoptic UTC hour
-  -m, -Model        HRDPS | RDPS | GDPS | all (default: hrdps)
+    -m, -Model        HRDPS | RDPS | GDPS | all (default: hrdps in fx mode)
     -s, -StationId    Station ID (3-5 alphanumeric IATA/ICAO. E.g. CWSE for Edmonton/Stony Plain)
-      -Lat          Latitude (used when station-id omitted)
-      -Lon          Longitude (used when station-id omitted)
-  -f, -InputFile    Path to CSV with required columns (bypasses data retrieval). See documentation for required format and headers.
-  -l, -Logfile      Logfile path (default: logs/retrieve_soundings.log)
+    -Lat              Latitude (used with -Lon when station-id omitted)
+    -Lon              Longitude (used with -Lat when station-id omitted)
+    -f, -InputFile    Path to CSV with required columns (bypasses data retrieval). See documentation for required format and headers.
+    -l, -Logfile      Logfile path (default: logs/retrieve_soundings.log)
     -c, -Config       Config JSON path (default: ua_config.json)
-  -h, -Help         Show this help
+    -v, -ValidateOnly Validate arguments/location/pipeline only (skip retrieval and plotting)
+    -h, -Help         Show this help
 
 Notes:
 - Date/hour validity is enforced in plot_ua.py.
-- Observed mode requires station-id.
-- Forecast mode supports station-id or lat/lon.
+- Observed mode requires station-id for data retrieval; input-file mode (-f) is also supported.
+- Forecast mode supports station-id or lat/lon; input-file mode (-f) is also supported.
+- Exactly one location mode is required: station-id, lat/lon pair, or input file.
 
 Exit Codes:
-  0 = Success
-  1 = Invalid skew-type
-  2 = Invalid hour
-  3 = Invalid model
-  4 = Missing location (station-id or lat/lon)
-  5 = Obs mode requires station-id
-  6 = Invalid station-id format
-  7 = Input file not found
-  8 = Config file not found
+    0 = Success
+    1 = Invalid skew-type
+    2 = Invalid hour
+    3 = Invalid model
+    4 = Missing location (station-id, lat/lon, or input file)
+    5 = Obs mode requires station-id
+    6 = Invalid station-id format
+    7 = Input file not found
+    8 = Config file not found
 "@
 }
 
@@ -88,7 +93,8 @@ if ($SkewType -ne "fx" -and $SkewType -ne "obs") {
 # Set default hour to most recent synoptic UTC hour if not provided
 if ([string]::IsNullOrEmpty($Hour)) {
     $utcHour = (Get-Date).ToUniversalTime().Hour
-    $Hour = "{0:D2}" -f ([Math]::Floor($utcHour / 6) * 6)
+    $defaultSynopticHour = [int]([Math]::Floor($utcHour / 6) * 6)
+    $Hour = "{0:D2}" -f $defaultSynopticHour
 }
 
 # Validate hour
@@ -111,8 +117,8 @@ if ($SkewType -eq "fx") {
         exit 3
     }
 } else {
-    $Model = ""
-    $Models = @("")
+    $Model = $null
+    $Models = @($null)
 }
 
 # Determine location mode
@@ -192,9 +198,16 @@ foreach ($ModelItem in $Models) {
         "--skew_type", $SkewType,
         "--logfile", $Logfile,
         "--location_mode", $LocationMode,
-        "--model", $ModelItem,
         "--config", $Config
     )
+
+    if ($SkewType -eq "fx" -and -not [string]::IsNullOrEmpty($ModelItem)) {
+        $PythonArgs += "--model", $ModelItem
+    }
+
+    if ($ValidateOnly) {
+        $PythonArgs += "--validate_only"
+    }
     
     if ($LocationMode -eq "station") {
         $PythonArgs += "--stn_id", $StationId
@@ -204,7 +217,7 @@ foreach ($ModelItem in $Models) {
             $PythonArgs += "--lon", $Lon
         }
     } elseif ($LocationMode -eq "latlon") {
-        $PythonArgs += "--stn_id", ""
+        $PythonArgs += "--stn_id", "UNKN"
         $PythonArgs += "--lat", $Lat
         $PythonArgs += "--lon", $Lon
     } else {
@@ -214,6 +227,13 @@ foreach ($ModelItem in $Models) {
     }
     
     & python $PythonArgs
+    $pythonExit = $LASTEXITCODE
+    if ($pythonExit -ne 0) {
+        Add-Content -Path $Logfile -Value "plot_ua.py failed with exit code $pythonExit"
+        Add-Content -Path $Logfile -Value "-----End plot_ua.py output-----`n"
+        Add-Content -Path $Logfile -Value "Script complete at $((Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss"))."
+        exit $pythonExit
+    }
 }
 
 Add-Content -Path $Logfile -Value "-----End plot_ua.py output-----`n"
