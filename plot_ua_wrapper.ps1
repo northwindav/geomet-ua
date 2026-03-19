@@ -24,6 +24,9 @@ param(
     
     [Alias('l')]
     [string]$Logfile = "logs/retrieve_soundings.log",
+
+    [Alias('c')]
+    [string]$Config = "ua_config.json",
     
     [switch]$Help
 )
@@ -37,16 +40,18 @@ Options (user-specified):
   -d, -Date         Date in YYYY-MM-DD (UTC). Default today.
   -H, -Hour         Hour in UTC (00, 06, 12, 18). Default: most recent synoptic UTC hour
   -m, -Model        HRDPS | RDPS | GDPS | all (default: hrdps)
-  -s, -StationId    Station ID (3-5 alphanumeric IATA. E.g. CYEG for Edmonton)
+    -s, -StationId    Station ID (3-5 alphanumeric IATA/ICAO. E.g. CWSE for Edmonton/Stony Plain)
       -Lat          Latitude (used when station-id omitted)
       -Lon          Longitude (used when station-id omitted)
   -f, -InputFile    Path to CSV with required columns (bypasses data retrieval). See documentation for required format and headers.
   -l, -Logfile      Logfile path (default: logs/retrieve_soundings.log)
+    -c, -Config       Config JSON path (default: ua_config.json)
   -h, -Help         Show this help
 
 Notes:
 - Date/hour validity is enforced in plot_ua.py.
-- Lat/lon mode requires plot_ua.py support; station ID remains required for obs today.
+- Observed mode requires station-id.
+- Forecast mode supports station-id or lat/lon.
 
 Exit Codes:
   0 = Success
@@ -57,6 +62,7 @@ Exit Codes:
   5 = Obs mode requires station-id
   6 = Invalid station-id format
   7 = Input file not found
+    8 = Config file not found
 "@
 }
 
@@ -110,6 +116,12 @@ if ($SkewType -eq "fx") {
 
 # Determine location mode
 $LocationMode = ""
+if (-not (Test-Path $Config)) {
+    Write-Error "Config file not found: $Config"
+    Show-Usage
+    exit 8
+}
+
 if (-not [string]::IsNullOrEmpty($InputFile)) {
     if (-not (Test-Path $InputFile)) {
         Write-Error "Input file not found: $InputFile"
@@ -179,7 +191,8 @@ foreach ($ModelItem in $Models) {
         "--skew_type", $SkewType,
         "--logfile", $Logfile,
         "--location_mode", $LocationMode,
-        "--model", $ModelItem
+        "--model", $ModelItem,
+        "--config", $Config
     )
     
     if ($LocationMode -eq "station") {

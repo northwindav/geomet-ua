@@ -166,7 +166,8 @@ def profile_dataframe_from_long(df: pd.DataFrame) -> pd.DataFrame:
 # Convert units to hPa, dm, C, km/h
 def convert_profile_units(df: pd.DataFrame) -> pd.DataFrame:
     converted = df.copy()
-    converted["pressure"] = converted["pressure"] / 10.0
+    # BUFR pressure is in Pa; convert to hPa for plotting.
+    converted["pressure"] = converted["pressure"] / 100.0
     converted["Geopotential_height"] = converted["Geopotential_height"] / 10.0
     converted["Temperature"] = converted["Temperature"] - 273.15
     converted["Dewpoint_Temperature"] = (

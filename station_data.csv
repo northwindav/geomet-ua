@@ -2,7 +2,7 @@ lat,lon,elev_m,rdps_elev_m,name,country,prov,upperair_obs,iata_code,wmo_id
 51.11,-115.33,1397,1826,Banff,ca,ab,,BAWO,71122
 50.55,-111.85,749,760,Brooks,ca,ab,,CWBO,
 51.06,-114.01,1081,1076,Calgary,ca,ab,,CYYC,
-53.19,-113.35,715,754,Edmonton/Stoney Plain UA,ca,ab,y,CYEG,71119
+53.19,-113.35,715,754,Edmonton/Stoney Plain UA,ca,ab,y,CWSE,71119
 58.46,-111.07,232,210,Fort_Chipewyan,ca,ab,,CYPY,
 56.65,-111.217,367,340,Fort_McMurray,ca,ab,,CYMM,71932
 55.183,-118.883,665,668,Grande_Prairie_Arpt,ca,ab,,CYQU,71940

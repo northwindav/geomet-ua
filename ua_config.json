@@ -1,0 +1,33 @@
+{
+  "paths": {
+    "figures_dir": "figures",
+    "logs_dir": "logs",
+    "default_logfile": "logs/retrieve_soundings.log",
+    "station_file": "station_data.csv",
+    "download_dir": "out/downloads"
+  },
+  "endpoints": {
+    "geomet_wms": "https://geo.weather.gc.ca/geomet",
+    "datamart_vertical_profile": "https://dd.weather.gc.ca/{date}/WXO-DD/vertical_profile/forecast/csv/ProgTephi_{hour}_{station}.csv",
+    "wyoming_csv": "https://weather.uwyo.edu/wsgi/sounding?datetime={date}%20{hour}:00:00&id={station}&type=TEXT:CSV"
+  },
+  "bufr": {
+    "enabled": true,
+    "bulletins": ["IUK", "IUS", "IUW", "IUJ"],
+    "url_template": "https://dd.weather.gc.ca/{date}/WXO-DD/bulletins/alphanumeric/{date}/IU/{station}/{hour}/{IUK|IUW|IUJ|IUS}_{station}_{ddHHMM}___{random digits}",
+    "timeout_seconds": 20
+  },
+  "elevation_api": {
+    "enabled": true,
+    "url": "https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}",
+    "timeout_seconds": 15
+  },
+  "defaults": {
+    "skew_type": "obs",
+    "model": "HRDPS",
+    "hour": "00",
+    "zoom": false,
+    "time_window_h": 48,
+    "time_step_h": 3
+  }
+}
