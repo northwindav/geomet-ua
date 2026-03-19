@@ -87,11 +87,10 @@ def plot_skewt(df: pd.DataFrame, zoom: bool = False):
         for p in target_pressures:
             if pres_df.min() <= p <= pres_df.max():
                 h = np.interp(p, pres_df[::-1], height_df[::-1])
-                h_dm = h / 10
-                skew.ax.text(-50, p, f"{h_dm:.0f} dm", fontsize=9, color="gray", ha="left", va="center")
+                skew.ax.text(-50, p, f"{h:.0f} dm", fontsize=9, color="gray", ha="left", va="center")
 
     if hodo:
-        mask = height_df < 12000
+        mask = height_df < 1200 # Plotting cutoff height in dm, not in m.
         uu = u[mask]
         vv = v[mask]
         height_df_12km = height_df[mask]

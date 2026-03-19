@@ -22,6 +22,10 @@ def reshape_wyoming_df(df_raw: pd.DataFrame) -> pd.DataFrame:
         if col in df_raw.columns:
             df_raw[col] = pd.to_numeric(df_raw[col], errors="coerce")
 
+    # Wyoming geopotential height is meters; convert to canonical decametres.
+    if "geopotential height_dm" in df_raw.columns:
+        df_raw["geopotential height_dm"] = pd.to_numeric(df_raw["geopotential height_dm"], errors="coerce") / 10.0
+
     df_raw["wind speed_kmh"] = df_raw["wind speed_m/s"].astype(float) * 3.6
 
     df_raw = df_raw.dropna(

@@ -52,7 +52,8 @@ def reshape_eccc_df(df_raw: pd.DataFrame, fx_hours=None) -> pd.DataFrame:
     df_all = df_all.sort_values(["forecast_hour", "pressure_hPa"], ascending=[True, False])
 
     df_all["wind speed_kmh"] = df_all["wind speed_kt"].astype(float) * 1.852
-    df_all["geopotential height_dm"] = df_all["geopotential height_dm"].astype(float) * 10
+    # Datamart GZ is already in decametres (dam); keep canonical *_dm values unchanged.
+    df_all["geopotential height_dm"] = df_all["geopotential height_dm"].astype(float)
 
     df_all = df_all[df_all["forecast_hour"].isin(fx_hours)]
 
